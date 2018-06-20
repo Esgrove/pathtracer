@@ -1,0 +1,19 @@
+obj head.OBJ
+
+light
+{
+	pos 1 0 1
+	col .8 .8 .8	 
+}
+
+light
+{
+	pos -1 -1 0
+	col .3 .2 .2
+}
+
+light
+{
+	pos 0 1 1
+	col 0 .5 0
+}

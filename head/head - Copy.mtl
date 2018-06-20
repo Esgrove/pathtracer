@@ -1,0 +1,17 @@
+newmtl head
+map_Kd lambertian.png
+map_bump -bm 0.02 normal.png
+Ks .15 .15 .15
+Ns 50
+
+newmtl wall
+map_Kd concrete2.png
+map_bump concrete2_normal.png
+Ks .15 .15 .15
+Ns 50
+
+newmtl floor
+map_Kd concrete1.png
+map_bump concrete1_normal.png
+Ks .15 .15 .15
+Ns 50
