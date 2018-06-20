@@ -19,7 +19,11 @@ The "head" scene used here for the two example renders is the [LPS head](http://
  - Support for alpha textures
  - Gaussian AA filtering with variable filter size 
  - Two different rendering modes (main difference is in how AA samples are handeled)
- - Also includes a legacy Whitted ray tracer supporting specular reflections.
+ - Also includes a classical ray tracer supporting specular reflections, area lights and soft shadows.
  - Color saturation function for making the end results "pop" a bit more :)
 
  ![alt text](https://github.com/Esgrove/pathtracer/blob/master/head2.png)
+
+ ##### Classical ray tracing with the depth-of-field effect
+
+ ![alt text](https://github.com/Esgrove/pathtracer/blob/master/crytek_sponza_whitted_dof.png)
