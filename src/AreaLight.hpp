@@ -76,11 +76,11 @@ public:
     }
 
 protected:
+    float m_intensity;
+    float m_power;
     Mat4f m_xform;  // Encodes position and orientation in world space.
     Vec2f m_size;   // Physical size of the emitter from the center of the light, i.e. half of the total width/height.
     Vec3f m_E;      // Diffuse emission (W/m^2).
-    float m_intensity;
-    float m_power;
 };
 
 }  // namespace FW

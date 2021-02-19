@@ -9,6 +9,7 @@
 
 #include <chrono>
 #include <memory>
+#include <string>
 #include <vector>
 
 namespace FW {
@@ -35,17 +36,19 @@ struct PathTracerContext {
 
     std::vector<PathTracerBlock> m_blocks;  // Render blocks for rendering tasks. Index by .idx
 
-    int                     m_pass;
-    int                     m_bounces;
-    bool                    m_bForceExit;
-    bool                    m_bResidual;
-    const MeshWithColors*   m_scene;
-    const CameraControls*   m_camera;
+    AreaLight*            m_light;
+    const CameraControls* m_camera;
+    const MeshWithColors* m_scene;
+    Image*                m_destImage;
+    RayTracer*            m_rt;
+
+    bool m_bForceExit;
+    bool m_bResidual;
+    int  m_bounces;
+    int  m_pass;
+
     std::unique_ptr<Image>  m_image;
-    RayTracer*              m_rt;
-    AreaLight*              m_light;
     std::vector<AreaLight>* m_lights;
-    Image*                  m_destImage;
 
     std::chrono::steady_clock::time_point start;  // time keeping for stats
 };
@@ -114,27 +117,25 @@ public:
     void setFocalDistance(float a) { m_focal_distance = a; }
     void setAperture(float a) { m_aperture = a; }
     void setTermination(float a) { m_termination_prob = a; }
-
     void resetRays() { m_TotalRays = 0; }
 
 protected:
-    unsigned __int64 m_TotalRays;
-    float            m_raysPerSecond;
-
     MulticoreLauncher m_launcher;
-    static bool       m_normalMapped;
-    static float      m_filt_width;
-    static int        m_aaNumRays;
-    static bool       m_bilinear_filtering;
-    static bool       m_whitted;
-    static bool       m_depth_of_field;
-    static bool       m_sobol_block;
-    static float      m_intensity;
-    static float      m_attenuation;
-    static float      m_focal_distance;
-    static float      m_aperture;
-    static float      m_termination_prob;
-    static int        m_numLightRays;
+
+    float            m_raysPerSecond;
+    static bool      m_bilinear_filtering;
+    static bool      m_normalMapped;
+    static bool      m_sobol_block;
+    static bool      m_whitted;
+    static float     m_aperture;
+    static float     m_attenuation;
+    static float     m_filt_width;
+    static float     m_focal_distance;
+    static float     m_intensity;
+    static float     m_termination_prob;
+    static int       m_aaNumRays;
+    static int       m_numLightRays;
+    unsigned __int64 m_TotalRays;
 };
 
 }  // namespace FW

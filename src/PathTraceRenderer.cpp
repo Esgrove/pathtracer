@@ -13,19 +13,19 @@
 namespace FW {
 
 bool  PathTraceRenderer::debugVis = false;
-bool  PathTraceRenderer::m_normalMapped = false;
 bool  PathTraceRenderer::m_bilinear_filtering = true;
-bool  PathTraceRenderer::m_whitted = false;
 bool  PathTraceRenderer::m_depth_of_field = false;
+bool  PathTraceRenderer::m_normalMapped = false;
 bool  PathTraceRenderer::m_sobol_block = false;
-float PathTraceRenderer::m_intensity = 1.0f;
-float PathTraceRenderer::m_attenuation = 1.0f;
+bool  PathTraceRenderer::m_whitted = false;
 float PathTraceRenderer::m_aperture = 0.0f;
+float PathTraceRenderer::m_attenuation = 1.0f;
+float PathTraceRenderer::m_filt_width = 1.0f;
 float PathTraceRenderer::m_focal_distance = 0.5f;
+float PathTraceRenderer::m_intensity = 1.0f;
 float PathTraceRenderer::m_termination_prob = 0.2f;
 int   PathTraceRenderer::m_aaNumRays = 4;
 int   PathTraceRenderer::m_numLightRays = 32;
-float PathTraceRenderer::m_filt_width = 1.0f;
 
 const float invPi = 0.31830988618379f;
 
@@ -57,7 +57,8 @@ float Gauss(float x, float y) {
 Vec3f drawCosineWeightedDirection(int base, int bounce, Random R) {
     float x, y, z, a, b;
 
-    int dim = 2 + 4 * bounce;  // dimensions 2 & 3
+    // dimensions 2 & 3
+    int dim = 2 + 4 * bounce;
     int rand = R.getS32(1, 1234);
 
     // Sobol
@@ -179,8 +180,7 @@ void PathTraceRenderer::getTextureParameters(const RaycastResult& hit, Vec3f& di
     }
 }
 unsigned int PathTraceRenderer::getLightToSample(const Vec3f pos, const std::vector<AreaLight>* lights, Random& R) {
-    unsigned int size = (*lights).size();
-
+    auto size = (*lights).size();
     if (size <= 1) {
         return 0;
     }  // only one light
@@ -261,10 +261,13 @@ Vec3f PathTraceRenderer::tracePath(float x, float y, PathTracerContext& ctx, int
 
     if (m_depth_of_field) {
         // focal point
-        Vec3f Rn = Rd.normalized();                 // normalized ray direction
-        Vec3f Pn = cameraCtrl.getForward();         // focal plane normal
-        float Pd = m_focal_distance / dot(Rn, Pn);  // distance from ray origin to focal plane: distance is increased when ray does not point directly to the focal plane normal direction
-        Vec3f Rf = Ro + Pd * Rn;                    // origin + distance * direction
+        Vec3f Rn = Rd.normalized();          // normalized ray direction
+        Vec3f Pn = cameraCtrl.getForward();  // focal plane normal
+
+        // distance from ray origin to focal plane:
+        // distance is increased when ray does not point directly to the focal plane normal direction
+        float Pd = m_focal_distance / max(0.01f, dot(Rn, Pn));
+        Vec3f Rf = Ro + Pd * Rn;  // origin + distance * direction
 
         // random sample on disk (aperture)
         float xr, yr, a, b;
@@ -652,8 +655,8 @@ Vec3f PathTraceRenderer::traceWhitted(float x, float y, PathTracerContext& ctx, 
 void PathTraceRenderer::pathTraceBlock(MulticoreLauncher::Task& t) {
     PathTracerContext& ctx = *(PathTracerContext*)t.data;
 
-    // const MeshWithColors* scene		= ctx.m_scene;
-    // RayTracer* rt						= ctx.m_rt;
+    // const MeshWithColors* scene       = ctx.m_scene;
+    // RayTracer* rt                     = ctx.m_rt;
     Image*                image = ctx.m_image.get();
     const CameraControls& cameraCtrl = *ctx.m_camera;
     // std::vector<AreaLight>* lights    = ctx.m_lights;

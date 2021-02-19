@@ -64,35 +64,11 @@ App::App(std::vector<std::string>& cmd_args)
     m_commonCtrl.addSeparator();
 
     m_commonCtrl.addButton((S32*)&m_action, Action_ResetCamera, FW_KEY_NONE, "Reset camera");
-    // m_commonCtrl.addButton((S32*)&m_action, Action_EncodeCameraSignature, FW_KEY_NONE, "Encode camera signature");
-    // m_commonCtrl.addButton((S32*)&m_action, Action_DecodeCameraSignature, FW_KEY_NONE, "Decode camera signature...");
     m_window.addListener(&m_cameraCtrl);
     m_commonCtrl.addSeparator();
 
     m_commonCtrl.addButton((S32*)&m_action, Action_NormalizeScale, FW_KEY_NONE, "Normalize scale");
-    //    m_commonCtrl.addButton((S32*)&m_action, Action_FlipXY,                  FW_KEY_NONE,    "Flip X/Y");
-    //    m_commonCtrl.addButton((S32*)&m_action, Action_FlipYZ,                  FW_KEY_NONE,    "Flip Y/Z");
-    //    m_commonCtrl.addButton((S32*)&m_action, Action_FlipZ,                   FW_KEY_NONE,    "Flip Z");
     m_commonCtrl.addSeparator();
-
-    // m_commonCtrl.addButton((S32*)&m_action, Action_NormalizeNormals, FW_KEY_NONE, "Normalize normals");
-    // m_commonCtrl.addButton((S32*)&m_action, Action_FlipNormals, FW_KEY_NONE, "Flip normals");
-    // m_commonCtrl.addButton((S32*)&m_action, Action_RecomputeNormals, FW_KEY_NONE, "Recompute normals");
-    // m_commonCtrl.addSeparator();
-
-    // m_commonCtrl.addToggle((S32*)&m_cullMode, CullMode_None, FW_KEY_NONE, "Disable backface culling");
-    // m_commonCtrl.addToggle((S32*)&m_cullMode, CullMode_CW, FW_KEY_NONE, "Cull clockwise faces");
-    // m_commonCtrl.addToggle((S32*)&m_cullMode, CullMode_CCW, FW_KEY_NONE, "Cull counter-clockwise faces");
-    // m_commonCtrl.addButton((S32*)&m_action, Action_FlipTriangles, FW_KEY_NONE, "Flip triangles");
-    // m_commonCtrl.addSeparator();
-
-    //    m_commonCtrl.addButton((S32*)&m_action, Action_CleanMesh,               FW_KEY_NONE,    "Remove unused materials,
-    //    denegerate triangles, and unreferenced vertices"); m_commonCtrl.addButton((S32*)&m_action,
-    //    Action_CollapseVertices,        FW_KEY_NONE,    "Collapse duplicate vertices"); m_commonCtrl.addButton((S32*)&m_action,
-    //    Action_DupVertsPerSubmesh,      FW_KEY_NONE,    "Duplicate vertices shared between multiple materials"); m_commonCtrl.addButton((S32*)&m_action,
-    //    Action_FixMaterialColors,       FW_KEY_NONE,    "Override material colors with average over texels"); m_commonCtrl.addButton((S32*)&m_action,
-    //    Action_DownscaleTextures,       FW_KEY_NONE,    "Downscale textures by 2x"); m_commonCtrl.addButton((S32*)&m_action,
-    //    Action_ChopBehindNear,          FW_KEY_NONE,    "Chop triangles behind near plane"); m_commonCtrl.addSeparator();
 
     m_commonCtrl.addButton((S32*)&m_action, Action_PathTraceMode, FW_KEY_ENTER, "Path trace mode (ENTER)");
     m_commonCtrl.addButton((S32*)&m_action, Action_PlaceLightSourceAtCamera, FW_KEY_SPACE, "Place light at camera (SPACE)", &clear_on_next_frame);
@@ -158,7 +134,7 @@ App::App(std::vector<std::string>& cmd_args)
     m_commonCtrl.loadState(m_commonCtrl.getStateFileName(1));
 }
 
-// returns the index of the needle in the haystack or -1 if not found
+/// returns the index of the needle in the haystack or -1 if not found
 int find_argument(std::string needle, std::vector<std::string> haystack) {
     for (unsigned j = 0; j < haystack.size(); ++j)
         if (!haystack[j].compare(needle))
@@ -756,7 +732,6 @@ void App::renderFrame(GLContext* gl) {
 
         glPopAttrib();
     }
-    // Display status line.
 
     m_commonCtrl.message(
         sprintf("Triangles = %d, vertices = %d, materials = %d", m_mesh->numTriangles(), m_mesh->numVertices(), m_mesh->numSubmeshes()),
@@ -764,7 +739,6 @@ void App::renderFrame(GLContext* gl) {
 }
 
 void App::renderScene(GLContext* gl, const Mat4f& worldToCamera, const Mat4f& projection) {
-    // Draw mesh.
     if (m_mesh)
         m_mesh->draw(gl, worldToCamera, projection);
 }
@@ -898,15 +872,15 @@ void App::constructTracer() {
             // no, construct...
             LARGE_INTEGER start, stop, frequency;
             QueryPerformanceFrequency(&frequency);
-            QueryPerformanceCounter(&start);  // Start time stamp
+            QueryPerformanceCounter(&start);
 
             m_rt->constructHierarchy(m_rtTriangles, m_use_sah);
 
-            QueryPerformanceCounter(&stop);  // Stop time stamp
+            QueryPerformanceCounter(&stop);
 
             int build_time = (int)((stop.QuadPart - start.QuadPart) * 1000.0 / frequency.QuadPart);  // Get timer result in milliseconds
             std::cout << "Build time: " << build_time << " ms" << std::endl;
-            // .. and save!
+
             m_rt->saveHierarchy(hierarchyCacheFile.getPtr(), m_rtTriangles);
             ::printf("Saved hierarchy to %s\n", hierarchyCacheFile.getPtr());
         }

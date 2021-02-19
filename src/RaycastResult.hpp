@@ -14,9 +14,7 @@ struct RaycastResult {
     float             u, v;       // Barycentric coordinates at the hit triangle.
     Vec3f             point;      // Hit position.
     Vec3f             orig, dir;  // The traced ray. Convenience for tracing and visualization. This is not strictly needed.
-
-    Vec3f dPdx, dPdy, dDdx, dDdy;  // EXTRA: Partial derivatives for texture filtering.
-    Vec2f delta_size;
+    Vec2f             delta_size;
 
     RaycastResult(const RTTriangle* tri, float t, float u, float v, Vec3f point, const Vec3f& orig, const Vec3f& dir)
         : tri(tri)

@@ -14,8 +14,6 @@
 
 namespace FW {
 
-//------------------------------------------------------------------------
-
 class App : public Window::Listener, public CommonControls::StateObject {
 private:
     enum Action {
@@ -81,7 +79,7 @@ private:
     } m_settings;
 
     struct {
-        std::string state_name;  // filenames of the state and scene files
+        std::string state_name;
         std::string scene_name;
         int         rayCount;
         int         build_time, trace_time;
@@ -125,53 +123,50 @@ private:
     CameraControls m_cameraCtrl;
 
     Action   m_action;
-    String   m_meshFileName;
     CullMode m_cullMode;
+    String   m_meshFileName;
 
-    std::unique_ptr<RayTracer> m_rt;
-    std::vector<Vec3f>         m_rtVertexPositions;  // kept only for MD5 checksums
-    std::vector<RTTriangle>    m_rtTriangles;
-
-    std::unique_ptr<MeshWithColors>         m_mesh;
     std::unique_ptr<AreaLight>              m_areaLight;
+    std::unique_ptr<MeshWithColors>         m_mesh;
     std::unique_ptr<PathTraceRenderer>      m_pathtrace_renderer;
+    std::unique_ptr<RayTracer>              m_rt;
     std::unique_ptr<std::vector<AreaLight>> m_areaLights;
-    unsigned int                            m_light_index;
-    int                                     m_numBounces;
-    float                                   m_lightSize;
-    Timer                                   m_updateClock;
+    std::vector<RTTriangle>                 m_rtTriangles;
+    std::vector<Vec3f>                      m_rtVertexPositions;  // kept only for MD5 checksums
 
-    bool  m_RTMode;
-    bool  m_useRussianRoulette;
-    bool  m_normalMapped;
-    bool  m_bilinear;
-    bool  m_whitted;
-    bool  m_use_sah;
-    bool  m_depth_of_field;
-    bool  m_sobol_block;
-    int   m_numAARays;
-    int   m_numLightRays;
-    float m_filter_width;
-    float m_light_intensity;
-    float m_saturation;
-    float m_aperture;
-    float m_focal_distance;
-    float m_termination;
-    float m_emission_red;
-    float m_emission_green;
-    float m_emission_blue;
-
-    bool  clear_on_next_frame = false;
-    Mat4f previous_camera = Mat4f(0);
     Image m_img;
-    int   m_numDebugPathCount = 1;
-    int   m_currentVisualizationIndex = 0;
-    float m_visualizationAlpha = 1;
-    bool  m_playbackVisualization = false;
-    bool  m_clearVisualization = false;
+    Mat4f previous_camera = Mat4f(0);
+    Timer m_updateClock;
+
+    bool         clear_on_next_frame = false;
+    bool         m_bilinear;
+    bool         m_clearVisualization = false;
+    bool         m_depth_of_field;
+    bool         m_normalMapped;
+    bool         m_playbackVisualization = false;
+    bool         m_RTMode;
+    bool         m_sobol_block;
+    bool         m_use_sah;
+    bool         m_useRussianRoulette;
+    bool         m_whitted;
+    float        m_lightSize;
+    float        m_aperture;
+    float        m_emission_blue;
+    float        m_emission_green;
+    float        m_emission_red;
+    float        m_filter_width;
+    float        m_focal_distance;
+    float        m_light_intensity;
+    float        m_saturation;
+    float        m_termination;
+    float        m_visualizationAlpha = 1;
+    int          m_numBounces;
+    int          m_currentVisualizationIndex = 0;
+    int          m_numAARays;
+    int          m_numDebugPathCount = 1;
+    int          m_numLightRays;
+    unsigned int m_light_index;
 
     std::vector<PathVisualizationNode> m_visualization;
 };
-
-//------------------------------------------------------------------------
 }  // namespace FW

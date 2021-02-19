@@ -14,15 +14,14 @@ private:
 };
 
 // print percentage status to terminal sometimes when updating
-class Statusbar {
-public:
+struct Statusbar {
     Statusbar(const std::string& descr, size_t max, float dispInterval = 0.01f);
     void update(size_t val);
 
-private:
-    size_t max, last;
     float  imax;
     float  interval;
+    size_t last;
+    size_t max;
 };
 
 namespace FW {

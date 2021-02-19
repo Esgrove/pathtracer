@@ -31,7 +31,6 @@ Vec2f getTexelCoords(Vec2f uv, const Vec2i size) {
 
 Mat3f formBasis(const Vec3f& n) {
     // form orthonormal basis matrix
-
     Vec3f q = n;
 
     // replace the element with the smallest absolute value
@@ -171,10 +170,7 @@ void RayTracer::constructHierarchy(std::vector<RTTriangle>& triangles, bool use_
 }
 
 RaycastResult RayTracer::raycast(const Vec3f& orig, const Vec3f& dir, bool occlusion) const {
-    ++m_rayCount;
-
     // bool occlusion -> early exit when any hit will do (shadow rays and ambient occlusion)
-
     RaycastResult castresult;
 
     float tmin = 1.0f, umin = 0.0f, vmin = 0.0f;
@@ -193,6 +189,7 @@ RaycastResult RayTracer::raycast(const Vec3f& orig, const Vec3f& dir, bool occlu
     unsigned int toVisitOffset = 0, currentNodeIndex = 0;
     unsigned int nodesToVisit[64];
 
+    ++m_rayCount;
     while (true) {
         flatNode node = bvh.nodes[currentNodeIndex];
 
