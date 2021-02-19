@@ -138,7 +138,7 @@ App::App(std::vector<std::string>& cmd_args)
     m_window.addListener(&m_commonCtrl);
 
     m_window.setTitle("Path Tracer");
-    m_commonCtrl.setStateFilePrefix("state_assignment4_");
+    m_commonCtrl.setStateFilePrefix("state_");
 
     m_window.setSize(Vec2i(1200, 800));
     m_pathtrace_renderer.reset(new PathTraceRenderer);
