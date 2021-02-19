@@ -1,13 +1,14 @@
 #include "PathTraceRenderer.hpp"
-#include "RayTracer.hpp"
+
 #include "AreaLight.hpp"
+#include "RayTracer.hpp"
 #include "sobol.h"
 #include "util.hpp"
 
-#include <atomic>
 #include <algorithm>
+#include <atomic>
 #include <string>
-#include <valarray> 
+#include <valarray>
 
 namespace FW {
 
@@ -22,8 +23,8 @@ float PathTraceRenderer::m_attenuation = 1.0f;
 float PathTraceRenderer::m_aperture = 0.0f;
 float PathTraceRenderer::m_focal_distance = 0.5f;
 float PathTraceRenderer::m_termination_prob = 0.2f;
-int	  PathTraceRenderer::m_aaNumRays = 4;
-int	  PathTraceRenderer::m_numLightRays = 32;
+int   PathTraceRenderer::m_aaNumRays = 4;
+int   PathTraceRenderer::m_numLightRays = 32;
 float PathTraceRenderer::m_filt_width = 1.0f;
 
 const float invPi = 0.31830988618379f;
@@ -33,654 +34,636 @@ const float Pg = 0.587f;
 const float Pb = 0.114f;
 
 Vec4f saturate(Vec4f color, float amount) {
+    //  0.0 creates a black-and-white image
+    //  0.5 reduces the color saturation by half
+    //  1.0 causes no change
+    //  2.0 doubles the color saturation
 
-	//  0.0 creates a black-and-white image
-	//  0.5 reduces the color saturation by half
-	//  1.0 causes no change
-	//  2.0 doubles the color saturation
+    float P = sqrt(color.x * color.x * Pr + color.y * color.y * Pg + color.z * color.z * Pb);
 
-	float P = sqrt(color.x * color.x * Pr +
-				   color.y * color.y * Pg +
-				   color.z * color.z * Pb);
+    color.x = P + (color.x - P) * amount;
+    color.y = P + (color.y - P) * amount;
+    color.z = P + (color.z - P) * amount;
 
-	color.x = P + (color.x - P) * amount;
-	color.y = P + (color.y - P) * amount;
-	color.z = P + (color.z - P) * amount;
-
-	return clamp(color, 0.0f, 1.0f);
+    return clamp(color, 0.0f, 1.0f);
 }
 
 // 2D Gauss filter
 float Gauss(float x, float y) {
-	float sigma = 1.0f;
-	return 1.0f / (sqrt(2.0f*FW_PI) * sigma) * exp(-1.0f * (x*x + y*y) / (2.0f * sigma*sigma));
+    float sigma = 1.0f;
+    return 1.0f / (sqrt(2.0f * FW_PI) * sigma) * exp(-1.0f * (x * x + y * y) / (2.0f * sigma * sigma));
 }
 
-Vec3f drawCosineWeightedDirection(int base, int bounce, Random R)
-{
-	float x, y, z, a, b;
+Vec3f drawCosineWeightedDirection(int base, int bounce, Random R) {
+    float x, y, z, a, b;
 
-	int dim  = 2 + 4 * bounce; // dimensions 2 & 3
-	int rand = R.getS32(1, 1234);
+    int dim = 2 + 4 * bounce;  // dimensions 2 & 3
+    int rand = R.getS32(1, 1234);
 
-	// Sobol
-	a = 2.0f * sobol::sample(base + rand, dim    ) - 1.0f;
-	b = 2.0f * sobol::sample(base + rand, dim + 1) - 1.0f;
+    // Sobol
+    a = 2.0f * sobol::sample(base + rand, dim) - 1.0f;
+    b = 2.0f * sobol::sample(base + rand, dim + 1) - 1.0f;
 
-	mapToDisk(a, b, x, y);
+    mapToDisk(a, b, x, y);
 
-	z = sqrt(1 - x*x - y*y);
+    z = sqrt(1 - x * x - y * y);
 
-	return Vec3f(x, y, z);
+    return Vec3f(x, y, z);
 }
 
-void PathTraceRenderer::getTextureParameters(const RaycastResult& hit, Vec3f& diffuse, Vec3f& n, Vec3f& specular)
-{
-	MeshBase::Material* mat = hit.tri->m_material;
+void PathTraceRenderer::getTextureParameters(const RaycastResult& hit, Vec3f& diffuse, Vec3f& n, Vec3f& specular) {
+    MeshBase::Material* mat = hit.tri->m_material;
 
-	// interpolated texture coordinates for hit point
-	Vec2f uv = (1 - hit.u - hit.v)* hit.tri->m_vertices[0].t + 
-							hit.u * hit.tri->m_vertices[1].t + 
-							hit.v * hit.tri->m_vertices[2].t;
+    // interpolated texture coordinates for hit point
+    Vec2f uv
+        = (1 - hit.u - hit.v) * hit.tri->m_vertices[0].t + hit.u * hit.tri->m_vertices[1].t + hit.v * hit.tri->m_vertices[2].t;
 
-	diffuse = mat->diffuse.getXYZ();
-	if (mat->textures[MeshBase::TextureType_Diffuse].exists())
-	{
-		const Texture& tex = mat->textures[MeshBase::TextureType_Diffuse];
-		const Image& teximg = *tex.getImage();
+    diffuse = mat->diffuse.getXYZ();
+    if (mat->textures[MeshBase::TextureType_Diffuse].exists()) {
+        const Texture& tex = mat->textures[MeshBase::TextureType_Diffuse];
+        const Image&   teximg = *tex.getImage();
 
-		if (m_bilinear_filtering) {
+        if (m_bilinear_filtering) {
+            // https://en.wikipedia.org/wiki/Bilinear_filtering
 
-			// https://en.wikipedia.org/wiki/Bilinear_filtering
-			
-			float fx = uv.x - floor(uv.x); // {x}
-			float fy = uv.y - floor(uv.y); // {y}
-			float fx1 = 1.0f - fx; 
-			float fy1 = 1.0f - fy; 
+            float fx = uv.x - floor(uv.x);  // {x}
+            float fy = uv.y - floor(uv.y);  // {y}
+            float fx1 = 1.0f - fx;
+            float fy1 = 1.0f - fy;
 
-			// weights
-			float w1 = fx1 * fy1;
-			float w2 = fx  * fy1;
-			float w3 = fx1 * fy;
-			float w4 = fx  * fy;
+            // weights
+            float w1 = fx1 * fy1;
+            float w2 = fx * fy1;
+            float w3 = fx1 * fy;
+            float w4 = fx * fy;
 
-			// texel coordinates
-			int x1 = (int)min(max(fx * teximg.getSize().x - 0.5f, 0.0f), teximg.getSize().x - 2.0f); // shift 0.5 pixels
-			int y1 = (int)min(max(fy * teximg.getSize().y - 0.5f, 0.0f), teximg.getSize().y - 2.0f);
-			int x2 = x1 + 1;
-			int y2 = y1 + 1;
+            // texel coordinates
+            int x1 = (int)min(max(fx * teximg.getSize().x - 0.5f, 0.0f), teximg.getSize().x - 2.0f);  // shift 0.5 pixels
+            int y1 = (int)min(max(fy * teximg.getSize().y - 0.5f, 0.0f), teximg.getSize().y - 2.0f);
+            int x2 = x1 + 1;
+            int y2 = y1 + 1;
 
-			// pixel values
-			Vec3f d1 = teximg.getVec4f(Vec2i(x1, y1)).getXYZ();
-			Vec3f d2 = teximg.getVec4f(Vec2i(x2, y1)).getXYZ();
-			Vec3f d3 = teximg.getVec4f(Vec2i(x1, y2)).getXYZ();
-			Vec3f d4 = teximg.getVec4f(Vec2i(x2, y2)).getXYZ();
+            // pixel values
+            Vec3f d1 = teximg.getVec4f(Vec2i(x1, y1)).getXYZ();
+            Vec3f d2 = teximg.getVec4f(Vec2i(x2, y1)).getXYZ();
+            Vec3f d3 = teximg.getVec4f(Vec2i(x1, y2)).getXYZ();
+            Vec3f d4 = teximg.getVec4f(Vec2i(x2, y2)).getXYZ();
 
-			// weighted sum for each color
-			diffuse = Vec3f(d1.x * w1 + d2.x * w2 + d3.x * w3 + d4.x * w4,
-							d1.y * w1 + d2.y * w2 + d3.y * w3 + d4.y * w4,
-							d1.z * w1 + d2.z * w2 + d3.z * w3 + d4.z * w4);
-		}
-		else {
-			Vec2i texelCoords = getTexelCoords(uv, teximg.getSize());
-			diffuse = teximg.getVec4f(texelCoords).getXYZ();
-		}
-		// gamma correction
-		diffuse = Vec3f(pow(diffuse.x, 2.2f), pow(diffuse.y, 2.2f), pow(diffuse.z, 2.2f));
-	}
-	// vertex normals
-	Vec3f n0 = hit.tri->m_vertices[0].n;
-	Vec3f n1 = hit.tri->m_vertices[1].n;
-	Vec3f n2 = hit.tri->m_vertices[2].n;
+            // weighted sum for each color
+            diffuse = Vec3f(
+                d1.x * w1 + d2.x * w2 + d3.x * w3 + d4.x * w4,
+                d1.y * w1 + d2.y * w2 + d3.y * w3 + d4.y * w4,
+                d1.z * w1 + d2.z * w2 + d3.z * w3 + d4.z * w4);
+        } else {
+            Vec2i texelCoords = getTexelCoords(uv, teximg.getSize());
+            diffuse = teximg.getVec4f(texelCoords).getXYZ();
+        }
+        // gamma correction
+        diffuse = Vec3f(pow(diffuse.x, 2.2f), pow(diffuse.y, 2.2f), pow(diffuse.z, 2.2f));
+    }
+    // vertex normals
+    Vec3f n0 = hit.tri->m_vertices[0].n;
+    Vec3f n1 = hit.tri->m_vertices[1].n;
+    Vec3f n2 = hit.tri->m_vertices[2].n;
 
-	// interpolated normal
-	n = normalize((1 - hit.u - hit.v)*n0 + hit.u*n1 + hit.v*n2);
-	
-	// normal texture
-	if (mat->textures[MeshBase::TextureType_Normal].exists() && m_normalMapped)
-	{
-		// tangent space normal from texture
-		Texture& normalTex = mat->textures[MeshBase::TextureType_Normal];
-		const Image& img = *normalTex.getImage();
-		Vec2i texelCoords = getTexelCoords(uv, img.getSize());
-		Vec3f texture_normal = 2.0f*img.getVec4f(texelCoords).getXYZ() - 1.0f;
+    // interpolated normal
+    n = normalize((1 - hit.u - hit.v) * n0 + hit.u * n1 + hit.v * n2);
 
-		// Vertices
-		Vec3f v0 = hit.tri->m_vertices[0].p;
-		Vec3f v1 = hit.tri->m_vertices[1].p;
-		Vec3f v2 = hit.tri->m_vertices[2].p;
+    // normal texture
+    if (mat->textures[MeshBase::TextureType_Normal].exists() && m_normalMapped) {
+        // tangent space normal from texture
+        Texture&     normalTex = mat->textures[MeshBase::TextureType_Normal];
+        const Image& img = *normalTex.getImage();
+        Vec2i        texelCoords = getTexelCoords(uv, img.getSize());
+        Vec3f        texture_normal = 2.0f * img.getVec4f(texelCoords).getXYZ() - 1.0f;
 
-		// texture coordinates
-		Vec2f uv0 = hit.tri->m_vertices[0].t;
-		Vec2f uv1 = hit.tri->m_vertices[1].t;
-		Vec2f uv2 = hit.tri->m_vertices[2].t;
+        // Vertices
+        Vec3f v0 = hit.tri->m_vertices[0].p;
+        Vec3f v1 = hit.tri->m_vertices[1].p;
+        Vec3f v2 = hit.tri->m_vertices[2].p;
 
-		// position delta
-		Vec3f deltaPos1 = v1 - v0;
-		Vec3f deltaPos2 = v2 - v0;
+        // texture coordinates
+        Vec2f uv0 = hit.tri->m_vertices[0].t;
+        Vec2f uv1 = hit.tri->m_vertices[1].t;
+        Vec2f uv2 = hit.tri->m_vertices[2].t;
 
-		// UV delta
-		Vec2f deltaUV1 = uv1 - uv0;
-		Vec2f deltaUV2 = uv2 - uv0;
+        // position delta
+        Vec3f deltaPos1 = v1 - v0;
+        Vec3f deltaPos2 = v2 - v0;
 
-		float r = 1.0f / (deltaUV1.x * deltaUV2.y - deltaUV1.y * deltaUV2.x);
+        // UV delta
+        Vec2f deltaUV1 = uv1 - uv0;
+        Vec2f deltaUV2 = uv2 - uv0;
 
-		Vec3f tangent   = normalize((deltaPos1 * deltaUV2.y - deltaPos2 * deltaUV1.y)*r);
-		Vec3f bitangent = normalize((deltaPos2 * deltaUV1.x - deltaPos1 * deltaUV2.x)*r);
+        float r = 1.0f / (deltaUV1.x * deltaUV2.y - deltaUV1.y * deltaUV2.x);
 
-		// Matrix
-		Mat3f TBN;
-		TBN.setCol(0, tangent);
-		TBN.setCol(1, bitangent);
-		TBN.setCol(2, n);
+        Vec3f tangent = normalize((deltaPos1 * deltaUV2.y - deltaPos2 * deltaUV1.y) * r);
+        Vec3f bitangent = normalize((deltaPos2 * deltaUV1.x - deltaPos1 * deltaUV2.x) * r);
 
-		// texture normal transformed to world space
-		n = normalize(TBN * texture_normal);
-	}
-	// specular
-       specular = mat->specular;
-	if (mat->textures[MeshBase::TextureType_Specular].exists())
-	{
-		Texture& specularTex = mat->textures[MeshBase::TextureType_Specular];
-		const Image& img = *specularTex.getImage();
-		Vec2i texelCoords = getTexelCoords(uv, img.getSize());
-		specular = img.getVec4f(texelCoords).getXYZ();
-	}
+        // Matrix
+        Mat3f TBN;
+        TBN.setCol(0, tangent);
+        TBN.setCol(1, bitangent);
+        TBN.setCol(2, n);
+
+        // texture normal transformed to world space
+        n = normalize(TBN * texture_normal);
+    }
+    // specular
+    specular = mat->specular;
+    if (mat->textures[MeshBase::TextureType_Specular].exists()) {
+        Texture&     specularTex = mat->textures[MeshBase::TextureType_Specular];
+        const Image& img = *specularTex.getImage();
+        Vec2i        texelCoords = getTexelCoords(uv, img.getSize());
+        specular = img.getVec4f(texelCoords).getXYZ();
+    }
 }
-unsigned int PathTraceRenderer::getLightToSample(const Vec3f pos, const std::vector<AreaLight>* lights, Random& R)
-{
-	unsigned int size = (*lights).size();
+unsigned int PathTraceRenderer::getLightToSample(const Vec3f pos, const std::vector<AreaLight>* lights, Random& R) {
+    unsigned int size = (*lights).size();
 
-	if (size <= 1) { return 0; } // only one light
+    if (size <= 1) {
+        return 0;
+    }  // only one light
 
-	std::valarray<float> values(size);
-	for (unsigned int i = 0; i < size; i++) {
-		values[i] = (*lights)[i].getPower(); // / (pos - (*lights)[i].getPosition()).length(); // emissive power divided by distance;
-	}
-	values /= values.sum();
+    std::valarray<float> values(size);
+    for (unsigned int i = 0; i < size; i++) {
+        values[i] = (*lights)[i].getPower();  // / (pos - (*lights)[i].getPosition()).length(); // emissive power divided by distance;
+    }
+    values /= values.sum();
 
-	float r = R.getF32(0.0f, 1.0f);
+    float r = R.getF32(0.0f, 1.0f);
 
-	float value = 0.0f;
-	for (unsigned int i = 0; i < size; i++) {
-		value += values[i];
-		if (r <= value) { return i; }
-	}
-	return size - 1; // just to be sure that something is returned always...
+    float value = 0.0f;
+    for (unsigned int i = 0; i < size; i++) {
+        value += values[i];
+        if (r <= value) {
+            return i;
+        }
+    }
+    return size - 1;  // just to be sure that something is returned always...
 }
 
 PathTracerContext::PathTracerContext()
-    : m_bForceExit(false),
-      m_bResidual(false),
-      m_scene(nullptr),
-      m_rt(nullptr),
-	  m_light(nullptr),
-      m_lights(nullptr),
-      m_pass(0),
-      m_bounces(0),
-      m_destImage(0),
-      m_camera(nullptr)
-{
-}
+    : m_bForceExit(false)
+    , m_bResidual(false)
+    , m_scene(nullptr)
+    , m_rt(nullptr)
+    , m_light(nullptr)
+    , m_lights(nullptr)
+    , m_pass(0)
+    , m_bounces(0)
+    , m_destImage(0)
+    , m_camera(nullptr) {}
 
-PathTracerContext::~PathTracerContext()
-{
-}
+PathTracerContext::~PathTracerContext() {}
 
-PathTraceRenderer::PathTraceRenderer()
-{
+PathTraceRenderer::PathTraceRenderer() {
     m_raysPerSecond = 0.0f;
-	m_TotalRays = 0;
+    m_TotalRays = 0;
 }
 
-PathTraceRenderer::~PathTraceRenderer()
-{
+PathTraceRenderer::~PathTraceRenderer() {
     stop();
 }
 
 // This function traces a single path and returns the resulting color value that will get rendered on the image
-Vec3f PathTraceRenderer::tracePath(float x, float y, PathTracerContext& ctx, int samplerBase, Random& R, std::vector<PathVisualizationNode>& visualization)
-{
-	//const MeshWithColors* scene = ctx.m_scene;
-	RayTracer* rt = ctx.m_rt;
-	Image* image = ctx.m_image.get();
-	const CameraControls& cameraCtrl = *ctx.m_camera;
-	std::vector<AreaLight>* lights = ctx.m_lights;
-
-	// get camera orientation and projection
-	Mat4f worldToCamera = cameraCtrl.getWorldToCamera();
-	Mat4f projection = Mat4f::fitToView(Vec2f(-1, -1), Vec2f(2, 2), image->getSize())*cameraCtrl.getCameraToClip();
-
-	// inverse projection from clip space to world space
-	Mat4f invP = (projection * worldToCamera).inverted();
-
-	// point on front plane in homogeneous coordinates
-	Vec4f P0(x, y, 0.0f, 1.0f);
-	// point on back plane in homogeneous coordinates
-	Vec4f P1(x, y, 1.0f, 1.0f);
-
-	// apply inverse projection, divide by w to get object-space points
-	Vec4f Roh = (invP * P0);
-	Vec3f Ro = (Roh * (1.0f / Roh.w)).getXYZ();
-	Vec4f Rdh = (invP * P1);
-	Vec3f Rd = (Rdh * (1.0f / Rdh.w)).getXYZ();
-
-	// Subtract front plane point from back plane point,
-	// yields ray direction.
-	// NOTE that it's not normalized: the direction Rd is defined
-	// so that the segment to be traced is [Ro, Ro+Rd], i.e.,
-	// intersections that come after the point Ro+Rd are to be discarded.
-	Rd = Rd - Ro;
-
-	if (m_depth_of_field) {
-		// focal point
-		Vec3f Rn = Rd.normalized();			       // normalized ray direction
-		Vec3f Pn = cameraCtrl.getForward();		   // focal plane normal
-		float Pd = m_focal_distance / dot(Rn, Pn); // distance from ray origin to focal plane: distance is increased when ray does not point directly to the focal plane normal direction
-		Vec3f Rf = Ro + Pd * Rn;				   // origin + distance * direction
-
-		// random sample on disk (aperture)
-		float xr, yr, a, b;
-		a = R.getF32(-1.0, 1.0f);
-		b = R.getF32(-1.0, 1.0f);
-		
-		mapToDisk(a, b, xr, yr);
-
-		// camera orientation
-		Vec3f up    = cameraCtrl.getOrientation().getCol(0);
-		Vec3f right = cameraCtrl.getOrientation().getCol(1);
-
-		// shift ray origin inside aperture disk and calculate new direction
-		Ro += m_aperture * (yr * up + xr * right);
-		Rd = cameraCtrl.getFar() * (Rf - Ro).normalized();
-	}
-
-	// trace!
-	RaycastResult result = rt->raycast(Ro, Rd, false);
-
-	// if we hit something, fetch a color and insert into image
-	Vec3f Ei(0.0f);
-
-	if (result.tri != nullptr)
-	{
-		if (debugVis)
-		{
-			PathVisualizationNode node;
-			node.labels.push_back(PathVisualizationLabel("start", result.orig)); // start label for eye pos
-			node.lines.push_back(PathVisualizationLine(result.orig, result.point, Vec3f(1.0f, 1.0f, 1.0f))); // white line
-			node.lines.push_back(PathVisualizationLine(result.point, result.point + result.tri->normal() * .1f, Vec3f(1.0f, 0.0f, 0.0f)));
-			node.labels.push_back(PathVisualizationLabel("direct", result.point));
-			visualization.push_back(node);
-		}
+Vec3f PathTraceRenderer::tracePath(float x, float y, PathTracerContext& ctx, int samplerBase, Random& R, std::vector<PathVisualizationNode>& visualization) {
+    // const MeshWithColors* scene = ctx.m_scene;
+    RayTracer*              rt = ctx.m_rt;
+    Image*                  image = ctx.m_image.get();
+    const CameraControls&   cameraCtrl = *ctx.m_camera;
+    std::vector<AreaLight>* lights = ctx.m_lights;
+
+    // get camera orientation and projection
+    Mat4f worldToCamera = cameraCtrl.getWorldToCamera();
+    Mat4f projection = Mat4f::fitToView(Vec2f(-1, -1), Vec2f(2, 2), image->getSize()) * cameraCtrl.getCameraToClip();
+
+    // inverse projection from clip space to world space
+    Mat4f invP = (projection * worldToCamera).inverted();
+
+    // point on front plane in homogeneous coordinates
+    Vec4f P0(x, y, 0.0f, 1.0f);
+    // point on back plane in homogeneous coordinates
+    Vec4f P1(x, y, 1.0f, 1.0f);
+
+    // apply inverse projection, divide by w to get object-space points
+    Vec4f Roh = (invP * P0);
+    Vec3f Ro = (Roh * (1.0f / Roh.w)).getXYZ();
+    Vec4f Rdh = (invP * P1);
+    Vec3f Rd = (Rdh * (1.0f / Rdh.w)).getXYZ();
 
-		// blinn-phong
-		float gloss = result.tri->m_material->glossiness;
+    // Subtract front plane point from back plane point,
+    // yields ray direction.
+    // NOTE that it's not normalized: the direction Rd is defined
+    // so that the segment to be traced is [Ro, Ro+Rd], i.e.,
+    // intersections that come after the point Ro+Rd are to be discarded.
+    Rd = Rd - Ro;
 
-		float normalization = (gloss + 2.0f) / (4.0f*FW_PI * (2.0f - pow(2.0f, -gloss / 2.0f)));
+    if (m_depth_of_field) {
+        // focal point
+        Vec3f Rn = Rd.normalized();                 // normalized ray direction
+        Vec3f Pn = cameraCtrl.getForward();         // focal plane normal
+        float Pd = m_focal_distance / dot(Rn, Pn);  // distance from ray origin to focal plane: distance is increased when ray does not point directly to the focal plane normal direction
+        Vec3f Rf = Ro + Pd * Rn;                    // origin + distance * direction
 
-		int bounce = 0, bounces = abs(ctx.m_bounces); // always do #m_bounces bounces
+        // random sample on disk (aperture)
+        float xr, yr, a, b;
+        a = R.getF32(-1.0, 1.0f);
+        b = R.getF32(-1.0, 1.0f);
 
-		Vec3f throughput(1, 1, 1), color(0.0f);
+        mapToDisk(a, b, xr, yr);
+
+        // camera orientation
+        Vec3f up = cameraCtrl.getOrientation().getCol(0);
+        Vec3f right = cameraCtrl.getOrientation().getCol(1);
+
+        // shift ray origin inside aperture disk and calculate new direction
+        Ro += m_aperture * (yr * up + xr * right);
+        Rd = cameraCtrl.getFar() * (Rf - Ro).normalized();
+    }
+
+    // trace!
+    RaycastResult result = rt->raycast(Ro, Rd, false);
 
-		//float p = 1.0f;
-		
-		// direct light:
+    // if we hit something, fetch a color and insert into image
+    Vec3f Ei(0.0f);
 
-		Vec3f O = result.point;				// hit position
-		Vec3f V = normalize(result.dir);	// Ray direction
+    if (result.tri != nullptr) {
+        if (debugVis) {
+            PathVisualizationNode node;
+            node.labels.push_back(PathVisualizationLabel("start", result.orig));  // start label for eye pos
+            node.lines.push_back(PathVisualizationLine(result.orig, result.point, Vec3f(1.0f, 1.0f, 1.0f)));  // white line
+            node.lines.push_back(PathVisualizationLine(result.point, result.point + result.tri->normal() * .1f, Vec3f(1.0f, 0.0f, 0.0f)));
+            node.labels.push_back(PathVisualizationLabel("direct", result.point));
+            visualization.push_back(node);
+        }
 
-		// get surface parameters
-		Vec3f diffuse, N, specular;
-		getTextureParameters(result, diffuse, N, specular);
+        // blinn-phong
+        float gloss = result.tri->m_material->glossiness;
 
-		int light_index = getLightToSample(O, lights, R);
+        float normalization = (gloss + 2.0f) / (4.0f * FW_PI * (2.0f - pow(2.0f, -gloss / 2.0f)));
 
-		// sample light source
-		float pdf;	// probability density function
-		Vec3f Pl;	// point
-		(*lights)[light_index].sample(pdf, Pl, samplerBase, bounce, R);
+        int bounce = 0, bounces = abs(ctx.m_bounces);  // always do #m_bounces bounces
 
-		Vec3f L = Pl - O;			// vec to light
-		Vec3f D = L.normalized();	// dir to light
+        Vec3f throughput(1, 1, 1), color(0.0f);
 
-		Vec3f emission = (*lights)[light_index].getEmission() * m_intensity;
+        // float p = 1.0f;
 
-		// shadow ray
-		if (!rt->raycast(O + 0.0001f*N, L, true)) {
+        // direct light:
 
-			// check for backface
-			if (dot(N, V) > 0.0f) { N *= -1.0f; }
+        Vec3f O = result.point;           // hit position
+        Vec3f V = normalize(result.dir);  // Ray direction
 
-			// area light normal
-			Vec3f Nl = (*lights)[light_index].getNormal();
+        // get surface parameters
+        Vec3f diffuse, N, specular;
+        getTextureParameters(result, diffuse, N, specular);
 
-			// theta = angle between vertex normal and dir to light
-			F32 cos_theta = max(0.0f, dot(N, D));
+        int light_index = getLightToSample(O, lights, R);
 
-			// theta_l = angle between the vector yx (from light to vertex) and the surface normal of the light.
-			F32 cos_theta_l = max(0.0f, dot(Nl, -D));
+        // sample light source
+        float pdf;  // probability density function
+        Vec3f Pl;   // point
+        (*lights)[light_index].sample(pdf, Pl, samplerBase, bounce, R);
 
-			// distance to light source
-			float d = L.length();
+        Vec3f L = Pl - O;          // vec to light
+        Vec3f D = L.normalized();  // dir to light
 
-			float inv_d   = min(1.0f / (d * d), 100000.0f); // avoid infinities
-			float inv_pdf = min(1.0f /     pdf, 100000.0f);
+        Vec3f emission = (*lights)[light_index].getEmission() * m_intensity;
 
-			// halfway vector
-			Vec3f H = normalize(D - V);
+        // shadow ray
+        if (!rt->raycast(O + 0.0001f * N, L, true)) {
+            // check for backface
+            if (dot(N, V) > 0.0f) {
+                N *= -1.0f;
+            }
 
-			// diffuse color
-			color = diffuse;
+            // area light normal
+            Vec3f Nl = (*lights)[light_index].getNormal();
 
-			// specular color: Blinn-Phong with normalization
-			color += specular * pow(max(0.0f, dot(N, H)), gloss) * normalization;
+            // theta = angle between vertex normal and dir to light
+            F32 cos_theta = max(0.0f, dot(N, D));
 
-			// accumulate
-			Ei += color * invPi * emission * cos_theta * cos_theta_l * inv_d * inv_pdf; // * throughput / p
-		}
+            // theta_l = angle between the vector yx (from light to vertex) and the surface normal of the light.
+            F32 cos_theta_l = max(0.0f, dot(Nl, -D));
 
-		// At this point you should determine if the path should be terminated. There
-		// are two alternative modes: a fixed number of bounces, or Russian roulette
-		// started after a given number of bounces.The mode and the numbers are set
-		// by the user, and passed to the function in the variable ctx.m bounces. The
-		// variable has a negative value if Russian roulette is enabled, and a positive
-		// value if not. So for example if the value is -3, this means that the first 3
-		// iterations will always cast continuation rays, but after that the loop will be
-		// terminated with some probability on each iteration, with the ray contribution
-		// compensated accordingly.
+            // distance to light source
+            float d = L.length();
 
-		// bounces
-		while (bounce < bounces) {
+            float inv_d = min(1.0f / (d * d), 100000.0f);  // avoid infinities
+            float inv_pdf = min(1.0f / pdf, 100000.0f);
 
-			// Draw a cosine weighted direction
-			V = normalize(formBasis(N) * drawCosineWeightedDirection(samplerBase, bounce, R));
+            // halfway vector
+            Vec3f H = normalize(D - V);
 
-			//p *= dot(N, V) * invPi; // cos(a) / pi
+            // diffuse color
+            color = diffuse;
 
-			throughput *= diffuse; // * invPi * dot(N, V); // BRDF * cos(a) = kd / pi * cos(a)
+            // specular color: Blinn-Phong with normalization
+            color += specular * pow(max(0.0f, dot(N, H)), gloss) * normalization;
 
-			// trace ray
-			result = rt->raycast(O + 0.0001f*N, cameraCtrl.getFar()*V, false);
+            // accumulate
+            Ei += color * invPi * emission * cos_theta * cos_theta_l * inv_d * inv_pdf;  // * throughput / p
+        }
 
-			if (!result) { break; }
+        // At this point you should determine if the path should be terminated. There
+        // are two alternative modes: a fixed number of bounces, or Russian roulette
+        // started after a given number of bounces.The mode and the numbers are set
+        // by the user, and passed to the function in the variable ctx.m bounces. The
+        // variable has a negative value if Russian roulette is enabled, and a positive
+        // value if not. So for example if the value is -3, this means that the first 3
+        // iterations will always cast continuation rays, but after that the loop will be
+        // terminated with some probability on each iteration, with the ray contribution
+        // compensated accordingly.
 
-			O = result.point;
+        // bounces
+        while (bounce < bounces) {
+            // Draw a cosine weighted direction
+            V = normalize(formBasis(N) * drawCosineWeightedDirection(samplerBase, bounce, R));
 
-			getTextureParameters(result, diffuse, N, specular);
+            // p *= dot(N, V) * invPi; // cos(a) / pi
 
-			light_index = getLightToSample(O, lights, R);
+            throughput *= diffuse;  // * invPi * dot(N, V); // BRDF * cos(a) = kd / pi * cos(a)
 
-			(*lights)[light_index].sample(pdf, Pl, samplerBase, bounce, R);
+            // trace ray
+            result = rt->raycast(O + 0.0001f * N, cameraCtrl.getFar() * V, false);
 
-			L = Pl - O;
-			D = L.normalized();
+            if (!result) {
+                break;
+            }
 
-			// shadow ray
-			if (!rt->raycast(O + 0.0001f*N, L, true)) {
+            O = result.point;
 
-				// check for backface
-				if (dot(N, V) > 0.0f) { N *= -1.0f; }
+            getTextureParameters(result, diffuse, N, specular);
 
-				// area light normal
-				Vec3f Nl = (*lights)[light_index].getNormal();
+            light_index = getLightToSample(O, lights, R);
 
-				// theta = angle between vertex normal and dir to light
-				F32 cos_theta = max(0.0f, dot(N, D));
+            (*lights)[light_index].sample(pdf, Pl, samplerBase, bounce, R);
 
-				// theta_l = angle between the vector yx (from light to vertex) and the surface normal of the light.
-				F32 cos_theta_l = max(0.0f, dot(Nl, -D));
+            L = Pl - O;
+            D = L.normalized();
 
-				// distance to light source
-				float d = L.length();
+            // shadow ray
+            if (!rt->raycast(O + 0.0001f * N, L, true)) {
+                // check for backface
+                if (dot(N, V) > 0.0f) {
+                    N *= -1.0f;
+                }
 
-				//float inv_p = min(1.0f / p, 10000000.0f);
+                // area light normal
+                Vec3f Nl = (*lights)[light_index].getNormal();
 
-				float inv_d   = min(1.0f / (d * d), 100000.0f);
-				float inv_pdf = min(1.0f /     pdf, 100000.0f);
+                // theta = angle between vertex normal and dir to light
+                F32 cos_theta = max(0.0f, dot(N, D));
 
-				// halfway vector
-				Vec3f H = normalize(D - V);
+                // theta_l = angle between the vector yx (from light to vertex) and the surface normal of the light.
+                F32 cos_theta_l = max(0.0f, dot(Nl, -D));
 
-				// diffuse color
-				color = diffuse;
+                // distance to light source
+                float d = L.length();
 
-				// specular color: Blinn-Phong with normalization
-				color += specular * pow(max(0.0f, dot(N, H)), gloss) * normalization;
+                // float inv_p = min(1.0f / p, 10000000.0f);
 
-				// accumulate
-				Ei += color * invPi * throughput * emission * cos_theta * cos_theta_l * inv_d * inv_pdf; // * inv_p
+                float inv_d = min(1.0f / (d * d), 100000.0f);
+                float inv_pdf = min(1.0f / pdf, 100000.0f);
 
-			}
-			bounce += 1;
+                // halfway vector
+                Vec3f H = normalize(D - V);
 
-			if (debugVis)
-			{
-				PathVisualizationNode node;
-				node.lines.push_back(PathVisualizationLine(result.orig, result.point, Vec3f(1.0f, 1.0f, 0.0f))); // yellow indirect
-				node.lines.push_back(PathVisualizationLine(result.point, result.point + result.tri->normal() * .1f, Vec3f(1.0f, 0.0f, 0.0f)));
-				node.labels.push_back(PathVisualizationLabel("bounce " + std::to_string(bounce), result.point));
+                // diffuse color
+                color = diffuse;
 
-				visualization.push_back(node);
-			}
-		}
+                // specular color: Blinn-Phong with normalization
+                color += specular * pow(max(0.0f, dot(N, H)), gloss) * normalization;
 
-		// russian roulette
-		if (ctx.m_bounces < 0) {
+                // accumulate
+                Ei += color * invPi * throughput * emission * cos_theta * cos_theta_l * inv_d * inv_pdf;  // * inv_p
+            }
+            bounce += 1;
 
-			float terminate = R.getF32(0.0f, 1.0f);
-			float inv_prob  = 1.0f / m_termination_prob;
+            if (debugVis) {
+                PathVisualizationNode node;
+                node.lines.push_back(PathVisualizationLine(result.orig, result.point, Vec3f(1.0f, 1.0f, 0.0f)));  // yellow indirect
+                node.lines.push_back(
+                    PathVisualizationLine(result.point, result.point + result.tri->normal() * .1f, Vec3f(1.0f, 0.0f, 0.0f)));
+                node.labels.push_back(PathVisualizationLabel("bounce " + std::to_string(bounce), result.point));
 
-			// continue path or terminate?
-			while (terminate > m_termination_prob) {
+                visualization.push_back(node);
+            }
+        }
 
-				// Draw a cosine weighted direction
-				V = normalize(formBasis(N) * drawCosineWeightedDirection(samplerBase, bounce, R));
+        // russian roulette
+        if (ctx.m_bounces < 0) {
+            float terminate = R.getF32(0.0f, 1.0f);
+            float inv_prob = 1.0f / m_termination_prob;
 
-				//p *= dot(N, V) * invPi; // cos(a) / pi
+            // continue path or terminate?
+            while (terminate > m_termination_prob) {
+                // Draw a cosine weighted direction
+                V = normalize(formBasis(N) * drawCosineWeightedDirection(samplerBase, bounce, R));
 
-				//throughput *= diffuse * invPi * dot(N, V); // BRDF * cos(a) = kd / pi * cos(a)
+                // p *= dot(N, V) * invPi; // cos(a) / pi
 
-				throughput *= diffuse;
+                // throughput *= diffuse * invPi * dot(N, V); // BRDF * cos(a) = kd / pi * cos(a)
 
-				// trace ray
-				result = rt->raycast(O + 0.0001f*N, cameraCtrl.getFar()*V, false);
+                throughput *= diffuse;
 
-				if (!result) { break; }
+                // trace ray
+                result = rt->raycast(O + 0.0001f * N, cameraCtrl.getFar() * V, false);
 
-				O = result.point;
+                if (!result) {
+                    break;
+                }
 
-				getTextureParameters(result, diffuse, N, specular);
+                O = result.point;
 
-				light_index = getLightToSample(O, lights, R);
+                getTextureParameters(result, diffuse, N, specular);
 
-				(*lights)[light_index].sample(pdf, Pl, samplerBase, bounce, R);
+                light_index = getLightToSample(O, lights, R);
 
-				L = Pl - O;
-				D = L.normalized();
+                (*lights)[light_index].sample(pdf, Pl, samplerBase, bounce, R);
 
-				// shadow ray
-				if (!rt->raycast(O + 0.0001f*N, L, true)) {
+                L = Pl - O;
+                D = L.normalized();
 
-					// check for backface
-					if (dot(N, V) > 0.0f) { N *= -1.0f; }
+                // shadow ray
+                if (!rt->raycast(O + 0.0001f * N, L, true)) {
+                    // check for backface
+                    if (dot(N, V) > 0.0f) {
+                        N *= -1.0f;
+                    }
 
-					// area light normal
-					Vec3f Nl = (*lights)[light_index].getNormal();
+                    // area light normal
+                    Vec3f Nl = (*lights)[light_index].getNormal();
 
-					// theta = angle between vertex normal and dir to light
-					F32 cos_theta = max(0.0f, dot(N, D));
+                    // theta = angle between vertex normal and dir to light
+                    F32 cos_theta = max(0.0f, dot(N, D));
 
-					// theta_l = angle between the vector yx (from light to vertex) and the surface normal of the light.
-					F32 cos_theta_l = max(0.0f, dot(Nl, -D));
+                    // theta_l = angle between the vector yx (from light to vertex) and the surface normal of the light.
+                    F32 cos_theta_l = max(0.0f, dot(Nl, -D));
 
-					// length to light source
-					float d = L.length();
+                    // length to light source
+                    float d = L.length();
 
-					//float inv_p = min(1.0f / p, 10000000.0f);d
+                    // float inv_p = min(1.0f / p, 10000000.0f);d
 
-					float inv_d   = min(1.0f / (d * d), 100000.0f);
-					float inv_pdf = min(1.0f /     pdf, 100000.0f);
+                    float inv_d = min(1.0f / (d * d), 100000.0f);
+                    float inv_pdf = min(1.0f / pdf, 100000.0f);
 
-					// halfway vector
-					Vec3f H = normalize(D - V);
+                    // halfway vector
+                    Vec3f H = normalize(D - V);
 
-					// diffuse color
-					color = diffuse;
+                    // diffuse color
+                    color = diffuse;
 
-					// specular color: Blinn-Phong with normalization
-					color += specular * pow(max(0.0f, dot(N, H)), gloss) * normalization;
+                    // specular color: Blinn-Phong with normalization
+                    color += specular * pow(max(0.0f, dot(N, H)), gloss) * normalization;
 
-					// accumulate
-					Ei += color * invPi * throughput * emission * cos_theta * cos_theta_l * inv_d * inv_pdf * inv_prob;
+                    // accumulate
+                    Ei += color * invPi * throughput * emission * cos_theta * cos_theta_l * inv_d * inv_pdf * inv_prob;
+                }
+                terminate = R.getF32(0.0f, 1.0f);
+                bounce += 1;
 
-				}
-				terminate = R.getF32(0.0f, 1.0f);
-				bounce += 1;
-
-				if (debugVis)
-				{
-					PathVisualizationNode node;
-					node.lines.push_back(PathVisualizationLine(result.orig, result.point, Vec3f(0.0f, 1.0f, 0.0f))); // green roulette bounces
-					node.lines.push_back(PathVisualizationLine(result.point, result.point + result.tri->normal() * .1f, Vec3f(1, 0, 0)));
-					node.labels.push_back(PathVisualizationLabel("roulette" + std::to_string(bounce), result.point));
-					visualization.push_back(node);
-				}
-			}
-		}
-	}
-	return Ei;
+                if (debugVis) {
+                    PathVisualizationNode node;
+                    node.lines.push_back(PathVisualizationLine(result.orig, result.point, Vec3f(0.0f, 1.0f, 0.0f)));  // green roulette bounces
+                    node.lines.push_back(
+                        PathVisualizationLine(result.point, result.point + result.tri->normal() * .1f, Vec3f(1, 0, 0)));
+                    node.labels.push_back(PathVisualizationLabel("roulette" + std::to_string(bounce), result.point));
+                    visualization.push_back(node);
+                }
+            }
+        }
+    }
+    return Ei;
 }
 
-Vec3f PathTraceRenderer::traceWhitted(float x, float y, PathTracerContext& ctx, int samplerBase, Random& R, std::vector<PathVisualizationNode>& visualization)
-{
-	//const MeshWithColors* scene = ctx.m_scene;
-	RayTracer* rt = ctx.m_rt;
-	Image* image = ctx.m_image.get();
-	const CameraControls& cameraCtrl = *ctx.m_camera;
-	std::vector<AreaLight>* lights = ctx.m_lights;
+Vec3f PathTraceRenderer::traceWhitted(float x, float y, PathTracerContext& ctx, int samplerBase, Random& R, std::vector<PathVisualizationNode>& visualization) {
+    // const MeshWithColors* scene = ctx.m_scene;
+    RayTracer*              rt = ctx.m_rt;
+    Image*                  image = ctx.m_image.get();
+    const CameraControls&   cameraCtrl = *ctx.m_camera;
+    std::vector<AreaLight>* lights = ctx.m_lights;
 
-	// get camera orientation and projection
-	Mat4f worldToCamera = cameraCtrl.getWorldToCamera();
-	Mat4f projection = Mat4f::fitToView(Vec2f(-1, -1), Vec2f(2, 2), image->getSize())*cameraCtrl.getCameraToClip();
+    // get camera orientation and projection
+    Mat4f worldToCamera = cameraCtrl.getWorldToCamera();
+    Mat4f projection = Mat4f::fitToView(Vec2f(-1, -1), Vec2f(2, 2), image->getSize()) * cameraCtrl.getCameraToClip();
 
-	// inverse projection from clip space to world space
-	Mat4f invP = (projection * worldToCamera).inverted();
+    // inverse projection from clip space to world space
+    Mat4f invP = (projection * worldToCamera).inverted();
 
-	// point on front plane in homogeneous coordinates
-	Vec4f P0(x, y, 0.0f, 1.0f);
-	// point on back plane in homogeneous coordinates
-	Vec4f P1(x, y, 1.0f, 1.0f);
+    // point on front plane in homogeneous coordinates
+    Vec4f P0(x, y, 0.0f, 1.0f);
+    // point on back plane in homogeneous coordinates
+    Vec4f P1(x, y, 1.0f, 1.0f);
 
-	// apply inverse projection, divide by w to get object-space points
-	Vec4f Roh = (invP * P0);
-	Vec3f Ro = (Roh * (1.0f / Roh.w)).getXYZ();
-	Vec4f Rdh = (invP * P1);
-	Vec3f Rd = (Rdh * (1.0f / Rdh.w)).getXYZ();
+    // apply inverse projection, divide by w to get object-space points
+    Vec4f Roh = (invP * P0);
+    Vec3f Ro = (Roh * (1.0f / Roh.w)).getXYZ();
+    Vec4f Rdh = (invP * P1);
+    Vec3f Rd = (Rdh * (1.0f / Rdh.w)).getXYZ();
 
-	// Subtract front plane point from back plane point,
-	// yields ray direction.
-	// NOTE that it's not normalized; the direction Rd is defined
-	// so that the segment to be traced is [Ro, Ro+Rd], i.e.,
-	// intersections that come _after_ the point Ro+Rd are to be discarded.
-	Rd = Rd - Ro;
+    // Subtract front plane point from back plane point,
+    // yields ray direction.
+    // NOTE that it's not normalized; the direction Rd is defined
+    // so that the segment to be traced is [Ro, Ro+Rd], i.e.,
+    // intersections that come _after_ the point Ro+Rd are to be discarded.
+    Rd = Rd - Ro;
 
-	if (m_depth_of_field) {
+    if (m_depth_of_field) {
+        // focal plane
+        Vec3f Rn = Rd.normalized();                 // normalized ray direction
+        Vec3f Pn = cameraCtrl.getForward();         // "focal plane" normal
+        float Pd = m_focal_distance / dot(Rn, Pn);  // distance from ray origin to focal plane:
+        Vec3f Rf = Ro + Pd * Rn;                    // origin + distance * direction
 
-		// focal plane
-		Vec3f Rn = Rd.normalized();			       // normalized ray direction
-		Vec3f Pn = cameraCtrl.getForward();		   // "focal plane" normal
-		float Pd = m_focal_distance / dot(Rn, Pn); // distance from ray origin to focal plane: 
-		Vec3f Rf = Ro + Pd * Rn;				   // origin + distance * direction
+        // random sample on disk (aperture)
+        F32 xr, yr, a, b;
+        a = R.getF32(-1.0, 1.0f);
+        b = R.getF32(-1.0, 1.0f);
 
-												   // random sample on disk (aperture)
-		F32 xr, yr, a, b;
-		a = R.getF32(-1.0, 1.0f);
-		b = R.getF32(-1.0, 1.0f);
-		
-		mapToDisk(a, b, xr, yr);
+        mapToDisk(a, b, xr, yr);
 
-		// camera orientation
-		Vec3f up = cameraCtrl.getOrientation().getCol(0);
-		Vec3f right = cameraCtrl.getOrientation().getCol(1);
+        // camera orientation
+        Vec3f up = cameraCtrl.getOrientation().getCol(0);
+        Vec3f right = cameraCtrl.getOrientation().getCol(1);
 
-		// shift ray origin and calculate new direction
-		Ro += m_aperture * (yr * up + xr * right);
-		Rd = cameraCtrl.getFar() * (Rf - Ro).normalized();
-	}
+        // shift ray origin and calculate new direction
+        Ro += m_aperture * (yr * up + xr * right);
+        Rd = cameraCtrl.getFar() * (Rf - Ro).normalized();
+    }
 
-	// trace!
-	RaycastResult result = rt->raycast(Ro, Rd, false);
+    // trace!
+    RaycastResult result = rt->raycast(Ro, Rd, false);
 
-	// if we hit something, fetch a color and insert into image
+    // if we hit something, fetch a color and insert into image
 
-	Vec3f color(0.0f);
+    Vec3f color(0.0f);
 
-	if (result.tri != nullptr)
-	{
-		Vec3f O = result.point;				// hit position
-		Vec3f V = normalize(result.dir);	// Ray direction
+    if (result.tri != nullptr) {
+        Vec3f O = result.point;           // hit position
+        Vec3f V = normalize(result.dir);  // Ray direction
 
-		Vec3f diffuse, N, specular;
-		getTextureParameters(result, diffuse, N, specular);
+        Vec3f diffuse, N, specular;
+        getTextureParameters(result, diffuse, N, specular);
 
-		// blinn-phong
-		F32 gloss = result.tri->m_material->glossiness;
-		F32 normalization = (gloss + 2.0f) / (4.0f*FW_PI * (2.0f - pow(2.0f, -gloss / 2.0f)));
+        // blinn-phong
+        F32 gloss = result.tri->m_material->glossiness;
+        F32 normalization = (gloss + 2.0f) / (4.0f * FW_PI * (2.0f - pow(2.0f, -gloss / 2.0f)));
 
-		int light_index = getLightToSample(O, lights, R);
+        int light_index = getLightToSample(O, lights, R);
 
-		// draw #m_numLightRays samples from area light and check visibility
-		float pdf, shadow = 0.0f, d;
-		Vec3f Pl, L, D;
-		for (int i = 0; i < m_numLightRays; i++) {
-			(*lights)[light_index].sample_disk(pdf, Pl, samplerBase, 0, R);
-			L = Pl - O;
-			D = L.normalized();
-			if (!rt->raycast(O + 0.0001f*D, L, true)) {
-				shadow += 1.0f;
-			}
-		}
-		L = (*lights)[light_index].getPosition() - O; // pos to light
-		D = L.normalized();							  // Light direction
-		d = L.length();								  // distance to light
+        // draw #m_numLightRays samples from area light and check visibility
+        float pdf, shadow = 0.0f, d;
+        Vec3f Pl, L, D;
+        for (int i = 0; i < m_numLightRays; i++) {
+            (*lights)[light_index].sample_disk(pdf, Pl, samplerBase, 0, R);
+            L = Pl - O;
+            D = L.normalized();
+            if (!rt->raycast(O + 0.0001f * D, L, true)) {
+                shadow += 1.0f;
+            }
+        }
+        L = (*lights)[light_index].getPosition() - O;  // pos to light
+        D = L.normalized();                            // Light direction
+        d = L.length();                                // distance to light
 
-		F32 attenuation = m_intensity / (m_attenuation * pow(d, 2.0f) + m_attenuation * d + 0.5f);
+        F32 attenuation = m_intensity / (m_attenuation * pow(d, 2.0f) + m_attenuation * d + 0.5f);
 
-		// halfway vector
-		Vec3f H = normalize(D - V);
+        // halfway vector
+        Vec3f H = normalize(D - V);
 
-		// diffuse color
-		color = diffuse * max(0.0f, dot(N, D));
+        // diffuse color
+        color = diffuse * max(0.0f, dot(N, D));
 
-		// specular color: Blinn-Phong with normalization
-		color += specular * pow(max(0.0f, dot(N, H)), gloss) * normalization;
+        // specular color: Blinn-Phong with normalization
+        color += specular * pow(max(0.0f, dot(N, H)), gloss) * normalization;
 
-		// distance attenuation
-		color *= attenuation;
+        // distance attenuation
+        color *= attenuation;
 
-		// shadow factor
-		color *= shadow / m_numLightRays;
-	}
-	return color;
+        // shadow factor
+        color *= shadow / m_numLightRays;
+    }
+    return color;
 }
 
 // This function is responsible for asynchronously generating paths for a given block.
-void PathTraceRenderer::pathTraceBlock( MulticoreLauncher::Task& t )
-{
+void PathTraceRenderer::pathTraceBlock(MulticoreLauncher::Task& t) {
     PathTracerContext& ctx = *(PathTracerContext*)t.data;
 
-    //const MeshWithColors* scene		= ctx.m_scene;
-    //RayTracer* rt						= ctx.m_rt;
-    Image* image						= ctx.m_image.get();
-    const CameraControls& cameraCtrl	= *ctx.m_camera;
-    //std::vector<AreaLight>* lights    = ctx.m_lights;
+    // const MeshWithColors* scene		= ctx.m_scene;
+    // RayTracer* rt						= ctx.m_rt;
+    Image*                image = ctx.m_image.get();
+    const CameraControls& cameraCtrl = *ctx.m_camera;
+    // std::vector<AreaLight>* lights    = ctx.m_lights;
 
     // make sure we're on CPU
     image->getMutablePtr();
 
     // get camera orientation and projection
     Mat4f worldToCamera = cameraCtrl.getWorldToCamera();
-    Mat4f projection = Mat4f::fitToView(Vec2f(-1,-1), Vec2f(2,2), image->getSize())*cameraCtrl.getCameraToClip();
+    Mat4f projection = Mat4f::fitToView(Vec2f(-1, -1), Vec2f(2, 2), image->getSize()) * cameraCtrl.getCameraToClip();
 
     // inverse projection from clip space to world space
     Mat4f invP = (projection * worldToCamera).inverted();
@@ -688,103 +671,120 @@ void PathTraceRenderer::pathTraceBlock( MulticoreLauncher::Task& t )
     // get the block which we are rendering
     PathTracerBlock& block = ctx.m_blocks[t.idx];
 
-	// Not used but must be passed to tracePath
-	std::vector<PathVisualizationNode> dummyVisualization; 
+    // Not used but must be passed to tracePath
+    std::vector<PathVisualizationNode> dummyVisualization;
 
-	static std::atomic<uint32_t> seed = 0;
-	uint32_t current_seed = seed.fetch_add(1);
-	Random R(t.idx + current_seed);	// this is bogus, just to make the random numbers change on each iteration
+    static std::atomic<uint32_t> seed = 0;
+    uint32_t                     current_seed = seed.fetch_add(1);
+    Random R(t.idx + current_seed);  // this is bogus, just to make the random numbers change on each iteration
 
-	// Sobol sequence base
-	int base = t.idx * R.getS32(1, 9) + R.getS32(1, 12345);
+    // Sobol sequence base
+    int base = t.idx * R.getS32(1, 9) + R.getS32(1, 12345);
 
-	int height = image->getSize().y;
-	int width  = image->getSize().x;
+    int height = image->getSize().y;
+    int width = image->getSize().x;
 
-	float div_x = 1.0f / (float)width;
-	float div_y = 1.0f / (float)height;
+    float div_x = 1.0f / (float)width;
+    float div_y = 1.0f / (float)height;
 
-	float filt_scale = 2.0f / m_filt_width;
+    float filt_scale = 2.0f / m_filt_width;
 
-	float a = 0.0f, b = 0.0f;
+    float a = 0.0f, b = 0.0f;
 
-	if (m_sobol_block) 
-	{
-		for ( int i = 0; i < block.m_width * block.m_height * m_aaNumRays; i++ )
-		{
-			if( ctx.m_bForceExit ) { return; }
+    if (m_sobol_block) {
+        for (int i = 0; i < block.m_width * block.m_height * m_aaNumRays; i++) {
+            if (ctx.m_bForceExit) {
+                return;
+            }
 
-			// ray origin
-			float px = block.m_x + block.m_width  * sobol::sample(base + i, 0);
-			float py = block.m_y + block.m_height * sobol::sample(base + i, 1);
-			float x = px * div_x *  2.0f - 1.0f;
-			float y = py * div_y * -2.0f + 1.0f;
+            // ray origin
+            float px = block.m_x + block.m_width * sobol::sample(base + i, 0);
+            float py = block.m_y + block.m_height * sobol::sample(base + i, 1);
+            float x = px * div_x * 2.0f - 1.0f;
+            float y = py * div_y * -2.0f + 1.0f;
 
-			// trace!
-			Vec3f color;
-			if (m_whitted) { color = traceWhitted(x, y, ctx, base + i, R, dummyVisualization); }
-			else		   { color = tracePath   (x, y, ctx, base + i, R, dummyVisualization); }
-			
-			// get pixel
-			int pixel_x = min((int)floor(px), width - 1);
-			int pixel_y = min((int)floor(py), height - 1);
+            // trace!
+            Vec3f color;
+            if (m_whitted) {
+                color = traceWhitted(x, y, ctx, base + i, R, dummyVisualization);
+            } else {
+                color = tracePath(x, y, ctx, base + i, R, dummyVisualization);
+            }
 
-			Vec4f prev = image->getVec4f(Vec2i(pixel_x, pixel_y));
-			prev += Vec4f(color, 1.0f) / (float)m_aaNumRays;
-			image->setVec4f(Vec2i(pixel_x, pixel_y), prev);
-		}
-	}
-	else 
-	{
-		for ( int i = 0; i < block.m_width * block.m_height; ++i )
-		{
-			if( ctx.m_bForceExit ) { return; }
+            // get pixel
+            int pixel_x = min((int)floor(px), width - 1);
+            int pixel_y = min((int)floor(py), height - 1);
 
-			int pixel_x = block.m_x + (i % block.m_width);
-			int pixel_y = block.m_y + (i / block.m_width);
+            Vec4f prev = image->getVec4f(Vec2i(pixel_x, pixel_y));
+            prev += Vec4f(color, 1.0f) / (float)m_aaNumRays;
+            image->setVec4f(Vec2i(pixel_x, pixel_y), prev);
+        }
+    } else {
+        for (int i = 0; i < block.m_width * block.m_height; ++i) {
+            if (ctx.m_bForceExit) {
+                return;
+            }
 
-			// AA: draw #m_aaNumRays samples around pixel
-			Vec4f color_AA(0.0f);
-			for (int k = 0; k < m_aaNumRays; k++)
-			{
-				//int r = R.getU32(1, 8765);
-				a = m_filt_width * (sobol::sample(base + i + k, 0) - 0.5f) + 0.5f;
-				b = m_filt_width * (sobol::sample(base + i + k, 1) - 0.5f) + 0.5f;
+            int pixel_x = block.m_x + (i % block.m_width);
+            int pixel_y = block.m_y + (i / block.m_width);
 
-				// generate ray through pixel
-				float px = (float)pixel_x + a;
-				float py = (float)pixel_y + b;
-				if (px < 0.0f)   { px *= -1.0f; }
-				if (py < 0.0f)   { py *= -1.0f; }
-				if (px > width)  { px -= a; }
-				if (py > height) { py -= b; }
-				float x = px * div_x *  2.0f - 1.0f;
-				float y = py * div_y * -2.0f + 1.0f;
+            // AA: draw #m_aaNumRays samples around pixel
+            Vec4f color_AA(0.0f);
+            for (int k = 0; k < m_aaNumRays; k++) {
+                // int r = R.getU32(1, 8765);
+                a = m_filt_width * (sobol::sample(base + i + k, 0) - 0.5f) + 0.5f;
+                b = m_filt_width * (sobol::sample(base + i + k, 1) - 0.5f) + 0.5f;
 
-				// trace
-				Vec3f color;
-				if (m_whitted) { color = traceWhitted(x, y, ctx, base + i, R, dummyVisualization); }
-				else		   { color = tracePath   (x, y, ctx, base + i, R, dummyVisualization); }
+                // generate ray through pixel
+                float px = (float)pixel_x + a;
+                float py = (float)pixel_y + b;
+                if (px < 0.0f) {
+                    px *= -1.0f;
+                }
+                if (py < 0.0f) {
+                    py *= -1.0f;
+                }
+                if (px > width) {
+                    px -= a;
+                }
+                if (py > height) {
+                    py -= b;
+                }
+                float x = px * div_x * 2.0f - 1.0f;
+                float y = py * div_y * -2.0f + 1.0f;
 
-				// filter
-				color_AA += Gauss(filt_scale * (a - 0.5f), filt_scale * (b - 0.5f)) * Vec4f(color, 1.0f);
-			}
-			// normalize with accumulated filter weight w
-			color_AA /= color_AA.w;
+                // trace
+                Vec3f color;
+                if (m_whitted) {
+                    color = traceWhitted(x, y, ctx, base + i, R, dummyVisualization);
+                } else {
+                    color = tracePath(x, y, ctx, base + i, R, dummyVisualization);
+                }
 
-			color_AA = saturate(color_AA, m_attenuation);
-			
-			// Put pixel.
-			Vec4f prev = image->getVec4f(Vec2i(pixel_x, pixel_y));
-			prev += color_AA;
-			image->setVec4f( Vec2i(pixel_x, pixel_y), prev );
-		}
-	}
+                // filter
+                color_AA += Gauss(filt_scale * (a - 0.5f), filt_scale * (b - 0.5f)) * Vec4f(color, 1.0f);
+            }
+            // normalize with accumulated filter weight w
+            color_AA /= color_AA.w;
+
+            color_AA = saturate(color_AA, m_attenuation);
+
+            // Put pixel.
+            Vec4f prev = image->getVec4f(Vec2i(pixel_x, pixel_y));
+            prev += color_AA;
+            image->setVec4f(Vec2i(pixel_x, pixel_y), prev);
+        }
+    }
 }
 
-void PathTraceRenderer::startPathTracingProcess( const MeshWithColors* scene, std::vector<AreaLight>* lights, RayTracer* rt, Image* dest, int bounces, const CameraControls& camera )
-{
-    FW_ASSERT( !m_context.m_bForceExit );
+void PathTraceRenderer::startPathTracingProcess(
+    const MeshWithColors*   scene,
+    std::vector<AreaLight>* lights,
+    RayTracer*              rt,
+    Image*                  dest,
+    int                     bounces,
+    const CameraControls&   camera) {
+    FW_ASSERT(!m_context.m_bForceExit);
 
     m_context.m_bForceExit = false;
     m_context.m_bResidual = false;
@@ -794,7 +794,7 @@ void PathTraceRenderer::startPathTracingProcess( const MeshWithColors* scene, st
     m_context.m_lights = lights;
     m_context.m_pass = 0;
     m_context.m_bounces = bounces;
-    m_context.m_image.reset(new Image( dest->getSize(), ImageFormat::RGBA_Vec4f));
+    m_context.m_image.reset(new Image(dest->getSize(), ImageFormat::RGBA_Vec4f));
 
     m_context.m_destImage = dest;
     m_context.m_image->clear();
@@ -808,12 +808,12 @@ void PathTraceRenderer::startPathTracingProcess( const MeshWithColors* scene, st
         int block_count_x = (image_width + block_size - 1) / block_size;
         int block_count_y = (image_height + block_size - 1) / block_size;
 
-        for(int y = 0; y < block_count_y; ++y) {
+        for (int y = 0; y < block_count_y; ++y) {
             int block_start_y = y * block_size;
             int block_end_y = FW::min(block_start_y + block_size, image_height);
             int block_height = block_end_y - block_start_y;
 
-            for(int x = 0; x < block_count_x; ++x) {
+            for (int x = 0; x < block_count_x; ++x) {
                 int block_start_x = x * block_size;
                 int block_end_x = FW::min(block_start_x + block_size, image_width);
                 int block_width = block_end_x - block_start_x;
@@ -833,101 +833,90 @@ void PathTraceRenderer::startPathTracingProcess( const MeshWithColors* scene, st
 
     // Fire away!
 
-	m_context.start = std::chrono::steady_clock::now();
+    m_context.start = std::chrono::steady_clock::now();
 
     // If you change this, change the one in checkFinish too.
     m_launcher.setNumThreads(m_launcher.getNumCores());
-    //m_launcher.setNumThreads(1);
+    // m_launcher.setNumThreads(1);
 
     m_launcher.popAll();
-    m_launcher.push( pathTraceBlock, &m_context, 0, (int)m_context.m_blocks.size() );
+    m_launcher.push(pathTraceBlock, &m_context, 0, (int)m_context.m_blocks.size());
 }
 
-void PathTraceRenderer::updatePicture( Image* dest )
-{
-    FW_ASSERT( m_context.m_image != 0 );
-    FW_ASSERT( m_context.m_image->getSize() == dest->getSize() );
+void PathTraceRenderer::updatePicture(Image* dest) {
+    FW_ASSERT(m_context.m_image != 0);
+    FW_ASSERT(m_context.m_image->getSize() == dest->getSize());
 
-    for ( int i = 0; i < dest->getSize().y; ++i )
-    {
-        for ( int j = 0; j < dest->getSize().x; ++j )
-        {
-            Vec4f D = m_context.m_image->getVec4f(Vec2i(j,i));
-            if ( D.w != 0.0f )
-                D = D*(1.0f/D.w);
+    for (int i = 0; i < dest->getSize().y; ++i) {
+        for (int j = 0; j < dest->getSize().x; ++j) {
+            Vec4f D = m_context.m_image->getVec4f(Vec2i(j, i));
+            if (D.w != 0.0f)
+                D = D * (1.0f / D.w);
 
             // Gamma correction.
-            Vec4f color = Vec4f(
-                FW::pow(D.x, 1.0f / 2.2f),
-                FW::pow(D.y, 1.0f / 2.2f),
-                FW::pow(D.z, 1.0f / 2.2f),
-                D.w
-            );
+            Vec4f color = Vec4f(FW::pow(D.x, 1.0f / 2.2f), FW::pow(D.y, 1.0f / 2.2f), FW::pow(D.z, 1.0f / 2.2f), D.w);
 
-            dest->setVec4f( Vec2i(j,i), color );
+            dest->setVec4f(Vec2i(j, i), color);
         }
     }
 }
 
-void PathTraceRenderer::checkFinish()
-{
-	// Print progress
-	printf(" %.2f%% done     \r", 100.0f * m_launcher.getNumFinished() / m_launcher.getNumTasks());
+void PathTraceRenderer::checkFinish() {
+    // Print progress
+    printf(" %.2f%% done     \r", 100.0f * m_launcher.getNumFinished() / m_launcher.getNumTasks());
 
     // have all the vertices from current bounce finished computing?
-    if ( m_launcher.getNumTasks() == m_launcher.getNumFinished() )
-    {
+    if (m_launcher.getNumTasks() == m_launcher.getNumFinished()) {
         // yes, remove from task list
         m_launcher.popAll();
 
         ++m_context.m_pass;
 
-		float time = (float)std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - m_context.start).count() / 1000.0f;
+        float time
+            = (float)std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - m_context.start)
+                  .count()
+            / 1000.0f;
 
-		// calculate average rays per second
-		m_TotalRays += m_context.m_rt->getRayCount();
-		m_raysPerSecond = m_TotalRays / time;
+        // calculate average rays per second
+        m_TotalRays += m_context.m_rt->getRayCount();
+        m_raysPerSecond = m_TotalRays / time;
 
-		m_context.m_rt->resetRayCounter();
+        m_context.m_rt->resetRayCounter();
 
-		// print stats
-		if (time < 60.0f) {
-			std::printf("  Done! time: %5.2f s   ", time);
-		}
-		else {
-			std::printf("  Done! time: %5.2f min   ", time / 60.0f);
-		}
-		std::printf("Total Mrays: %6.1f (%5.2f Mrays/sec)\n", m_TotalRays / 1000000.0f, m_raysPerSecond / 1000000.0f);
-		
+        // print stats
+        if (time < 60.0f) {
+            std::printf("  Done! time: %5.2f s   ", time);
+        } else {
+            std::printf("  Done! time: %5.2f min   ", time / 60.0f);
+        }
+        std::printf("Total Mrays: %6.1f (%5.2f Mrays/sec)\n", m_TotalRays / 1000000.0f, m_raysPerSecond / 1000000.0f);
+
         // you may want to uncomment this to write out a sequence of PNG images
         // after the completion of each full round through the image.
-        String fn = sprintf( "pt-%03dppp.png", m_context.m_pass );
-        File outfile( fn, File::Create );
-        if ( !m_context.m_bForceExit )
-        {
+        String fn = sprintf("pt-%03dppp.png", m_context.m_pass);
+        File   outfile(fn, File::Create);
+        if (!m_context.m_bForceExit) {
             // keep going
 
             // If you change this, change the one in startPathTracingProcess too.
             m_launcher.setNumThreads(m_launcher.getNumCores());
-            //m_launcher.setNumThreads(1);
+            // m_launcher.setNumThreads(1);
 
             m_launcher.popAll();
-            m_launcher.push( pathTraceBlock, &m_context, 0, (int)m_context.m_blocks.size() );
+            m_launcher.push(pathTraceBlock, &m_context, 0, (int)m_context.m_blocks.size());
             ::printf("Pass %d\n", m_context.m_pass);
-        }
-        else ::printf("\nStopped!\n");
+        } else
+            ::printf("\nStopped!\n");
     }
 }
 
 void PathTraceRenderer::stop() {
     m_context.m_bForceExit = true;
-    
-    if ( isRunning() )
-    {
+
+    if (isRunning()) {
         m_context.m_bForceExit = true;
-        while( m_launcher.getNumTasks() > m_launcher.getNumFinished() )
-        {
-            Sleep( 1 );
+        while (m_launcher.getNumTasks() > m_launcher.getNumFinished()) {
+            Sleep(1);
         }
         m_launcher.popAll();
     }
@@ -935,4 +924,4 @@ void PathTraceRenderer::stop() {
     m_context.m_bForceExit = false;
 }
 
-} // namespace FW
+}  // namespace FW
