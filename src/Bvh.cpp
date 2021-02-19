@@ -8,26 +8,25 @@
 namespace FW {
 
 // contructor when building BVH
-BVH::BVH(std::vector<RTTriangle>* triangles, bool sah) : triangles(triangles), sah_enabled(sah) {
-    std::unique_ptr<Node> root = std::make_unique<Node>();
-
+BVH::BVH(std::vector<RTTriangle>* triangles, bool sah) : m_triangles(triangles), m_sahEnabled(sah) {
+    root = std::make_unique<Node>();
     this->depth = 0;
 
     // initialize index list for triangles
     list.resize(triangles->size());
-    for (unsigned int i = 0; i < triangles->size(); i++) {
+    for (auto i = 0; i < triangles->size(); ++i) {
         list[i] = i;
     }
 
     // recursively build tree
-    if (sah_enabled) {
+    if (m_sahEnabled) {
         std::cout << "\n  Building tree using SAH..." << std::endl;
     } else {
         std::cout << "\n  Building tree..." << std::endl;
     }
 
     std::chrono::steady_clock::time_point begin = std::chrono::steady_clock::now();
-    construct(root, 0, (unsigned int)list.size() - 1);
+    construct(root, 0, static_cast<int>(list.size() - 1));
     std::chrono::steady_clock::time_point end = std::chrono::steady_clock::now();
 
     std::cout << "    Done!" << std::endl;
@@ -44,11 +43,9 @@ BVH::BVH(std::vector<RTTriangle>* triangles, bool sah) : triangles(triangles), s
     std::printf("    Time = %.3f ms\n\n", (float)std::chrono::duration_cast<std::chrono::microseconds>(end - begin).count() / 1000);
 
     // Print info
-    std::printf("triangles: %u, nodes: %u, depth: %u\n", list.size(), nodes.size(), depth);
-
-    std::printf("bad splits: %u, total: %u, percent: %.1f%%\n", bad_splits, total_splits, (float)bad_splits / (float)total_splits * 100.0f);
-
-    std::printf("flatnode size: %u bytes\n", sizeof(flatNode));
+    std::printf("triangles: %zd, nodes: %zd, depth: %d\n", list.size(), nodes.size(), depth);
+    std::printf("bad splits: %d, total: %d, percent: %.1f%%\n", badSplits, totalSplits, (float)badSplits / (float)totalSplits * 100.0f);
+    std::printf("flatnode size: %zd bytes\n", sizeof(flatNode));
 
     std::cout << std::endl;
 
@@ -56,14 +53,14 @@ BVH::BVH(std::vector<RTTriangle>* triangles, bool sah) : triangles(triangles), s
         // print nodes
         std::printf("\n");
         std::printf("Nodes:\n");
-        unsigned int i = 0;
+        int i = 0;
         for (auto n : nodes) {
             std::printf(
                 "%3d start: %2d, end: %2d, tris: %2d, right child: %2d, leaf: %s\n",
                 i,
-                n.start_idx,
-                n.end_idx,
-                n.end_idx - n.start_idx + 1,
+                n.startIdx,
+                n.endIdx,
+                n.endIdx - n.startIdx + 1,
                 n.rightChild,
                 n.leaf ? "yes" : "no");
             i += 1;
@@ -77,10 +74,10 @@ void BVH::flatten(std::unique_ptr<Node>& node) {
     // Depth-first in pre-order => left child node is always next in the vector
 
     // create a flatNode from Node
-    flatNode flat_node = flatNode(node->box, node->start_idx, node->end_idx, node->leaf, node->axis);
+    flatNode flat_node = flatNode(node->box, node->startIdx, node->endIdx, node->leaf, node->axis);
 
     // index of this node
-    unsigned __int32 index = (unsigned __int32)nodes.size();
+    __int32 index = (__int32)nodes.size();
 
     // add to list
     nodes.push_back(flat_node);
@@ -93,73 +90,73 @@ void BVH::flatten(std::unique_ptr<Node>& node) {
         flatten(node->leftChild);
 
         // right child index is current size after left recursion
-        nodes[index].rightChild = (unsigned __int32)nodes.size();
+        nodes[index].rightChild = (__int32)nodes.size();
 
         // go right recursively
         flatten(node->rightChild);
     }
 }
 
-void BVH::construct(std::unique_ptr<Node>& node, unsigned int start_idx, unsigned int end_idx) {
+void BVH::construct(std::unique_ptr<Node>& node, int startIdx, int endIdx) {
     // compute bounding box for this node
-    node->box = computeBB(start_idx, end_idx);
+    node->box = computeBB(startIdx, endIdx);
 
     // store contained nodes (indices)
-    node->start_idx = start_idx;
-    node->end_idx = end_idx;
+    node->startIdx = startIdx;
+    node->endIdx = endIdx;
 
     // number of triangles in node
-    unsigned int tris = end_idx - start_idx + 1;
+    int tris = endIdx - startIdx + 1;
 
     // continue recursion?
-    if (tris > max_tris) {
-        unsigned int dim = 0;
-        unsigned int mid = (start_idx + end_idx) / 2;
+    if (tris > maxTrisInLeaf) {
+        int dim = 0;
+        int mid = (startIdx + endIdx) / 2;
 
-        if (sah_enabled) {
+        if (m_sahEnabled) {
             // Check all possible splits using dynamic programming
 
-            float area = 1.0f / node->box.area();  // precalculate total area division
+            // precalculate total area division
+            float area = 1.0f / node->box.area();
             float minCost = FLT_MAX;
 
             std::vector<float> box_l_areas(tris - 1);
             std::vector<float> box_r_areas(tris - 1);
 
-            for (unsigned int d = 0; d <= 2; d++) {
+            for (auto d = 0; d <= 2; d++) {
                 // sort index list with centroids along dimension d
-                concurrency::parallel_sort(
-                    list.begin() + start_idx, list.begin() + end_idx, [this, d](unsigned int x, unsigned int y) -> bool {
-                        return (*triangles)[x].centroid()[d] < (*triangles)[y].centroid()[d];
-                    });
+                concurrency::parallel_sort(list.begin() + startIdx, list.begin() + endIdx, [this, d](int x, int y) -> bool {
+                    return (*m_triangles)[x].centroid()[d] < (*m_triangles)[y].centroid()[d];
+                });
 
                 // calculate and store all split areas:
                 // AABB for first and last triangle
-                AABB box_l((*triangles)[list[start_idx]].min(), (*triangles)[list[start_idx]].max());
+                AABB box_l((*m_triangles)[list[startIdx]].min(), (*m_triangles)[list[startIdx]].max());
                 box_l_areas[0] = box_l.area();
 
-                AABB box_r((*triangles)[list[end_idx]].min(), (*triangles)[list[end_idx]].max());
+                AABB box_r((*m_triangles)[list[endIdx]].min(), (*m_triangles)[list[endIdx]].max());
                 box_r_areas[0] = box_r.area();
 
                 // increase existing bounding box with next triangle and calculate area
-                for (unsigned int i = 1; i < tris - 1; i++) {
-                    box_l = Union(box_l, AABB((*triangles)[list[start_idx + i]].min(), (*triangles)[list[start_idx + i]].max()));
+                for (auto i = 1; i < tris - 1; ++i) {
+                    box_l = Union(box_l, AABB((*m_triangles)[list[startIdx + i]].min(), (*m_triangles)[list[startIdx + i]].max()));
                     box_l_areas[i] = box_l.area();
 
-                    box_r = Union(box_r, AABB((*triangles)[list[end_idx - i]].min(), (*triangles)[list[end_idx - i]].max()));
+                    box_r = Union(box_r, AABB((*m_triangles)[list[endIdx - i]].min(), (*m_triangles)[list[endIdx - i]].max()));
                     box_r_areas[i] = box_r.area();
                 }
 
                 // calculate cost
-                for (unsigned int i = 0; i < tris - 1; i++) {
-                    unsigned int n_l = i + 1;
-                    unsigned int n_r = tris - 1 - i;
+                for (auto i = 0; i < tris - 1; ++i) {
+                    auto n_l = i + 1;
+                    auto n_r = tris - 1 - i;
 
-                    float cost = 1.0f / max_tris + (n_l * box_l_areas[i] + n_r * box_r_areas[n_r - 1]) * area;
+                    float cost = 1.0f / maxTrisInLeaf + (n_l * box_l_areas[i] + n_r * box_r_areas[n_r - 1]) * area;
 
                     if (cost < minCost) {
                         minCost = cost;
                         dim = d;
-                        mid = start_idx + i + 1;
+                        mid = startIdx + i + 1;
                     }
                 }
             }
@@ -167,28 +164,27 @@ void BVH::construct(std::unique_ptr<Node>& node, unsigned int start_idx, unsigne
             // Split at chosen point if cost is smaller than testing all triangles
             if (minCost < tris) {
                 node->axis = dim;
-                total_splits += 1;
+                totalSplits += 1;
                 depth += 1;
 
                 // If we get a bad split, use object median
-                if (mid == start_idx || mid == end_idx) {
-                    bad_splits += 1;
-                    mid = (start_idx + end_idx) / 2;
+                if (mid == startIdx || mid == endIdx) {
+                    badSplits += 1;
+                    mid = (startIdx + endIdx) / 2;
                 }
 
                 // rearrange list
-                std::nth_element(
-                    list.begin() + start_idx, list.begin() + mid, list.begin() + end_idx, [this, dim](unsigned int x, unsigned int y) -> bool {
-                        return (*triangles)[x].centroid()[dim] < (*triangles)[y].centroid()[dim];
-                    });
+                std::nth_element(list.begin() + startIdx, list.begin() + mid, list.begin() + endIdx, [this, dim](int x, int y) -> bool {
+                    return (*m_triangles)[x].centroid()[dim] < (*m_triangles)[y].centroid()[dim];
+                });
 
                 // construct left child node, recurse
                 node->leftChild = std::make_unique<Node>();
-                construct(node->leftChild, start_idx, mid - 1);
+                construct(node->leftChild, startIdx, mid - 1);
 
                 // construct right child node, recurse
                 node->rightChild = std::make_unique<Node>();
-                construct(node->rightChild, mid, end_idx);
+                construct(node->rightChild, mid, endIdx);
 
             } else {
                 node->leaf = true;
@@ -198,9 +194,9 @@ void BVH::construct(std::unique_ptr<Node>& node, unsigned int start_idx, unsigne
             // try spatial median first, else use object median
 
             // Bounding box of centroids
-            AABB centroidBounds((*triangles)[list[start_idx]].centroid(), (*triangles)[list[start_idx]].centroid());
-            for (unsigned int i = start_idx + 1; i <= end_idx; ++i) {
-                centroidBounds = Union(centroidBounds, (*triangles)[list[i]].centroid());
+            AABB centroidBounds((*m_triangles)[list[startIdx]].centroid(), (*m_triangles)[list[startIdx]].centroid());
+            for (auto i = startIdx + 1; i <= endIdx; ++i) {
+                centroidBounds = Union(centroidBounds, (*m_triangles)[list[i]].centroid());
             }
             // longest axis
             dim = centroidBounds.MaximumExtent();
@@ -210,29 +206,29 @@ void BVH::construct(std::unique_ptr<Node>& node, unsigned int start_idx, unsigne
             float split_coord = 0.5f * (centroidBounds.min[dim] + centroidBounds.max[dim]);
 
             // partition
-            auto it = std::partition(list.begin() + start_idx, list.begin() + end_idx, [this, dim, split_coord](unsigned int i) {
-                return (*triangles)[i].centroid()[dim] < split_coord;
+            auto it = std::partition(list.begin() + startIdx, list.begin() + endIdx, [this, dim, split_coord](int i) {
+                return (*m_triangles)[i].centroid()[dim] < split_coord;
             });
-            mid = it - list.begin();
+            mid = static_cast<int>(it - list.begin());
 
             // if spatial median fails, use object median
-            if (mid == start_idx || mid == end_idx) {
-                bad_splits += 1;
-                mid = (start_idx + end_idx) / 2;
-                std::nth_element(list.begin() + start_idx, list.begin() + mid, list.begin() + end_idx, [this, dim](auto x, auto y) -> bool {
-                    return (*triangles)[x].centroid()[dim] < (*triangles)[y].centroid()[dim];
+            if (mid == startIdx || mid == endIdx) {
+                badSplits += 1;
+                mid = (startIdx + endIdx) / 2;
+                std::nth_element(list.begin() + startIdx, list.begin() + mid, list.begin() + endIdx, [this, dim](auto x, auto y) -> bool {
+                    return (*m_triangles)[x].centroid()[dim] < (*m_triangles)[y].centroid()[dim];
                 });
             }
-            total_splits += 1;
+            totalSplits += 1;
             depth += 1;
 
             // construct left child node, recurse
             node->leftChild = std::make_unique<Node>();
-            construct(node->leftChild, start_idx, mid - 1);
+            construct(node->leftChild, startIdx, mid - 1);
 
             // construct right child node, recurse
             node->rightChild = std::make_unique<Node>();
-            construct(node->rightChild, mid, end_idx);
+            construct(node->rightChild, mid, endIdx);
         }
     } else {
         node->leaf = true;
@@ -240,24 +236,24 @@ void BVH::construct(std::unique_ptr<Node>& node, unsigned int start_idx, unsigne
     }
 }
 
-AABB BVH::computeBB(unsigned int start_idx, unsigned int end_idx) {
+AABB BVH::computeBB(int startIdx, int endIdx) {
     // compute axis-aligned bounding box for triangles in list
 
     // initialize bounds to min and max vertex of first triangle
-    Vec3f p1 = (*triangles)[list[start_idx]].m_vertices[0].p;
-    Vec3f p2 = (*triangles)[list[start_idx]].m_vertices[1].p;
-    Vec3f p3 = (*triangles)[list[start_idx]].m_vertices[2].p;
+    Vec3f p1 = (*m_triangles)[list[startIdx]].m_vertices[0].p;
+    Vec3f p2 = (*m_triangles)[list[startIdx]].m_vertices[1].p;
+    Vec3f p3 = (*m_triangles)[list[startIdx]].m_vertices[2].p;
 
     Vec3f minV = Vec3f(min(p1.x, p2.x, p3.x), min(p1.y, p2.y, p3.y), min(p1.z, p2.z, p3.z));
     Vec3f maxV = Vec3f(max(p1.x, p2.x, p3.x), max(p1.y, p2.y, p3.y), max(p1.z, p2.z, p3.z));
 
     // loop over all triangles in list between given indices
     Vec3f minT, maxT;
-    for (unsigned int i = start_idx + 1; i <= end_idx; i++) {
+    for (auto i = startIdx + 1; i <= endIdx; ++i) {
         // update bounds
-        p1 = (*triangles)[list[i]].m_vertices[0].p;
-        p2 = (*triangles)[list[i]].m_vertices[1].p;
-        p3 = (*triangles)[list[i]].m_vertices[2].p;
+        p1 = (*m_triangles)[list[i]].m_vertices[0].p;
+        p2 = (*m_triangles)[list[i]].m_vertices[1].p;
+        p3 = (*m_triangles)[list[i]].m_vertices[2].p;
 
         minT = Vec3f(min(p1.x, p2.x, p3.x), min(p1.y, p2.y, p3.y), min(p1.z, p2.z, p3.z));
         maxT = Vec3f(max(p1.x, p2.x, p3.x), max(p1.y, p2.y, p3.y), max(p1.z, p2.z, p3.z));

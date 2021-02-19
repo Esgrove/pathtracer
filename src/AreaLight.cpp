@@ -24,7 +24,7 @@ void AreaLight::draw(const Mat4f& worldToCamera, const Mat4f& projection, bool w
 
         int num_segments = 32;
 
-        for (int i = 0; i < num_segments; i++) {
+        for (int i = 0; i < num_segments; ++i) {
             float theta1 = FW_PI * (float)(i) / (float)num_segments;
             float theta2 = FW_PI * (float)(i + 1) / (float)num_segments;
 

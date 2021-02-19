@@ -77,55 +77,57 @@ void RayTracer::loadHierarchy(const char* filename, std::vector<RTTriangle>& tri
     std::ifstream infile(filename, std::ios::binary);
 
     // index list size
-    unsigned __int32 list_size;
-    read(infile, list_size);
+    __int32 listSize;
+    read(infile, listSize);
 
     // index list
-    std::vector<unsigned int> list;
-    unsigned __int32          temp;
-    for (unsigned int i = 0; i < list_size; i++) {
+    std::vector<__int32> list;
+
+    __int32 temp;
+    for (auto i = 0; i < listSize; ++i) {
         read(infile, temp);
         list.push_back(temp);
     }
 
     // number of nodes
-    unsigned __int32 bvh_nodes_size;
-    read(infile, bvh_nodes_size);
+    __int32 bvhNodesSize;
+    read(infile, bvhNodesSize);
 
     // nodes
     std::vector<flatNode> nodes;
-    nodes.reserve(bvh_nodes_size);
-    Vec3f            min, max;
-    unsigned __int32 start_idx, end_idx, rightChild, axis, depth;
-    bool             leaf;
-    for (unsigned int i = 0; i < bvh_nodes_size; i++) {
+    nodes.reserve(bvhNodesSize);
+
+    __int32 startIdx, endIdx, rightChild, axis, depth;
+    bool    leaf;
+    Vec3f   min, max;
+    for (auto i = 0; i < bvhNodesSize; ++i) {
         read(infile, min);
         read(infile, max);
-        read(infile, start_idx);
-        read(infile, end_idx);
+        read(infile, startIdx);
+        read(infile, endIdx);
         read(infile, rightChild);
         read(infile, leaf);
         read(infile, axis);
-        nodes.push_back(flatNode(AABB(min, max), start_idx, end_idx, rightChild, leaf, axis));
+        nodes.push_back(flatNode(AABB(min, max), startIdx, endIdx, rightChild, leaf, axis));
     }
-    read(infile, (unsigned __int32)depth);
+    read(infile, (__int32)depth);
 
     // create BVH
     bvh = BVH(m_triangles, list, nodes, depth);
 
     // Print info
     std::printf("\nLoaded BVH:\n");
-    std::printf("triangles: %d, nodes: %d, depth: %d\n\n", list_size, bvh_nodes_size, depth);
+    std::printf("triangles: %d, nodes: %d, depth: %d\n\n", listSize, bvhNodesSize, depth);
     if (list.size() < 100) {
-        unsigned int i = 0;
+        int i = 0;
         std::printf("Nodes:\n");
         for (auto n : nodes) {
             std::printf(
                 "%3d start: %2d, end: %2d, tris: %2d, right: %2d, leaf: %s\n",
                 i,
-                n.start_idx,
-                n.end_idx,
-                n.end_idx - n.start_idx + 1,
+                n.startIdx,
+                n.endIdx,
+                n.endIdx - n.startIdx + 1,
                 n.rightChild,
                 n.leaf ? "yes" : "no");
             i += 1;
@@ -139,27 +141,27 @@ void RayTracer::saveHierarchy(const char* filename, const std::vector<RTTriangle
     std::ofstream outfile(filename, std::ios::binary);
 
     // index list size (vertices)
-    write(outfile, (unsigned __int32)bvh.list.size());
+    write(outfile, (__int32)bvh.list.size());
 
     // index list
-    for (unsigned int i = 0; i < bvh.list.size(); i++) {
-        write(outfile, (unsigned __int32)bvh.list[i]);
+    for (int i = 0; i < bvh.list.size(); ++i) {
+        write(outfile, (__int32)bvh.list[i]);
     }
     // number of nodes
-    write(outfile, (unsigned __int32)bvh.nodes.size());
+    write(outfile, (__int32)bvh.nodes.size());
 
     // write each node
-    for (unsigned int i = 0; i < bvh.nodes.size(); i++) {
-        write(outfile, bvh.nodes[i].box.min);                       // Vec3f
-        write(outfile, bvh.nodes[i].box.max);                       // Vec3f
-        write(outfile, (unsigned __int32)bvh.nodes[i].start_idx);   // unsigned int
-        write(outfile, (unsigned __int32)bvh.nodes[i].end_idx);     // unsigned int
-        write(outfile, (unsigned __int32)bvh.nodes[i].rightChild);  // unsigned int
-        write(outfile, bvh.nodes[i].leaf);                          // bool
-        write(outfile, (unsigned __int32)bvh.nodes[i].axis);        // unsigned int
+    for (int i = 0; i < bvh.nodes.size(); ++i) {
+        write(outfile, bvh.nodes[i].box.min);
+        write(outfile, bvh.nodes[i].box.max);
+        write(outfile, bvh.nodes[i].startIdx);
+        write(outfile, bvh.nodes[i].endIdx);
+        write(outfile, bvh.nodes[i].rightChild);
+        write(outfile, bvh.nodes[i].leaf);
+        write(outfile, bvh.nodes[i].axis);
     }
     // tree depth
-    write(outfile, (unsigned __int32)bvh.depth);
+    write(outfile, (__int32)bvh.depth);
 }
 
 void RayTracer::constructHierarchy(std::vector<RTTriangle>& triangles, bool use_SAH) {
@@ -186,8 +188,8 @@ RaycastResult RayTracer::raycast(const Vec3f& orig, const Vec3f& dir, bool occlu
     // root of the tree. The nodes that still need to be visited are stored in the nodesToVisit[] array, which acts as a
     // stack. toVisitOffset holds the offset (index) to the next free element in the stack.
 
-    unsigned int toVisitOffset = 0, currentNodeIndex = 0;
-    unsigned int nodesToVisit[64];
+    int toVisitOffset = 0, currentNodeIndex = 0;
+    int nodesToVisit[64];
 
     ++m_rayCount;
     while (true) {
@@ -198,7 +200,7 @@ RaycastResult RayTracer::raycast(const Vec3f& orig, const Vec3f& dir, bool occlu
             // leaf node
             if (node.leaf) {
                 // intersect with triangles
-                for (unsigned int i = node.start_idx; i <= node.end_idx; i++) {
+                for (auto i = node.startIdx; i <= node.endIdx; ++i) {
                     float t, u, v;
                     if ((*m_triangles)[bvh.list[i]].intersect_woop(orig, dir, t, u, v)) {
                         if (use_alpha) {
@@ -247,15 +249,15 @@ RaycastResult RayTracer::raycast(const Vec3f& orig, const Vec3f& dir, bool occlu
             // not a leaf node
             else {
                 // For an interior node that the ray hits, it is necessary to visit both of its children.
-                // it’s desirable to visit the first child that the ray passes through before visiting the second one,
-                // in case there is a primitive that the ray intersects in the first one, so that the ray’s tMax value
-                // can be updated, thus reducing the ray’s extent and thus the number of node bounding boxes it intersects.
+                // it's desirable to visit the first child that the ray passes through before visiting the second one,
+                // in case there is a primitive that the ray intersects in the first one, so that the ray's tMax value
+                // can be updated, thus reducing the ray's extent and thus the number of node bounding boxes it intersects.
                 //
                 // An efficient way to perform a front-to-back traversal without incurring the expense of
                 // intersecting the ray with both child nodes and comparing the distances is to use the
-                // sign of the ray’s direction vector for the coordinate axis along which primitives were
+                // sign of the ray's direction vector for the coordinate axis along which primitives were
                 // partitioned for the current node: if the sign is negative, we should visit the second child
-                // before the first child, since the primitives that went into the second child’s subtree were
+                // before the first child, since the primitives that went into the second child's subtree were
                 // on the upper side of the partition point.
 
                 // Put far BVH node in the stack, advance to near node
@@ -282,8 +284,9 @@ RaycastResult RayTracer::raycast(const Vec3f& orig, const Vec3f& dir, bool occlu
     }
     // found a hit
     if (hit) {
-        castresult = RaycastResult(&(*m_triangles)[imin], tmin, umin, vmin, orig + tmin * dir, orig, dir);
+        return RaycastResult(&(*m_triangles)[imin], tmin, umin, vmin, orig + tmin * dir, orig, dir);
     }
+
     return castresult;
 }
 

@@ -50,13 +50,13 @@ struct Node {
     FW::AABB box;
 
     // Indices in to the global triangle list
-    unsigned int start_idx, end_idx;
+    __int32 startIdx, endIdx;
 
     // leaf node?
     bool leaf = false;
 
     // split axis
-    unsigned int axis = 0;
+    __int32 axis = 0;
 
     // child nodes
     std::unique_ptr<Node> leftChild;
@@ -66,18 +66,18 @@ struct Node {
 // Treenode for depth-first ordered list
 struct flatNode {
     // constructor
-    flatNode(FW::AABB box, unsigned __int32 start, unsigned __int32 end, bool leaf, unsigned __int32 axis)
+    flatNode(FW::AABB box, __int32 start, __int32 end, bool leaf, __int32 axis)
         : box(box)
-        , start_idx(start)
-        , end_idx(end)
+        , startIdx(start)
+        , endIdx(end)
         , leaf(leaf)
         , axis(axis)
         , triangles(end - start + 1) {};
 
-    flatNode(FW::AABB box, unsigned __int32 start, unsigned __int32 end, unsigned __int32 right, bool leaf, unsigned __int32 axis)
+    flatNode(FW::AABB box, __int32 start, __int32 end, __int32 right, bool leaf, __int32 axis)
         : box(box)
-        , start_idx(start)
-        , end_idx(end)
+        , startIdx(start)
+        , endIdx(end)
         , rightChild(right)
         , leaf(leaf)
         , axis(axis)
@@ -87,27 +87,27 @@ struct flatNode {
     AABB box;
 
     // Indices into the global triangle list (size = 2*4B = 8B)
-    unsigned __int32 start_idx, end_idx;
+    __int32 startIdx, endIdx;
 
     // leaf node (size = 1B -> 4B)
     bool leaf = false;
 
     // index offset for right child node (size = 4B)
-    unsigned __int32 rightChild = 0;
+    __int32 rightChild = 0;
 
     // split axis (size = 4B)
-    unsigned __int32 axis;
+    __int32 axis;
 
     // total size = 44B
     // can't get down to 32, have to increase to 64 for good cache line behavior
 
     // padding
-    unsigned __int32 leftChild;  // 48B
-    unsigned __int32 triangles;  // 52B
+    __int32 leftChild;  // 48B
+    __int32 triangles;  // 52B
 
-    unsigned __int32 pad0 = 0;  // 56B
-    unsigned __int32 pad1 = 0;  // 60B
-    unsigned __int32 pad2 = 0;  // 64B
+    __int32 pad0 = 0;  // 56B
+    __int32 pad1 = 0;  // 60B
+    __int32 pad2 = 0;  // 64B
 
     // intersect with bounding box
     bool intersect(const FW::Vec3f& orig, const FW::Vec3f& inv_dir, const int sign[3], const float& t1) const;

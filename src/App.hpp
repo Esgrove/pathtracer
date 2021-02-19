@@ -68,14 +68,14 @@ private:
     // this structure holds the necessary arguments when rendering using command line parameters
     struct {
         bool         batch_render;
-        int          spp;                 // samples per pixel to use
-        SamplingType sample_type;         // AO or AA sampling; AO includes one extra sample for the primary ray
-        bool         output_images;       // might be useful to compare images with the example
-        bool         use_textures;        // whether or not textures are used
-        bool         use_arealights;      // whether or not area light sampling is used
         bool         enable_reflections;  // whether to compute reflections in whitted integrator
+        bool         output_images;       // might be useful to compare images with the example
+        bool         use_arealights;      // whether or not area light sampling is used
         bool         use_sah;
+        bool         use_textures;  // whether or not textures are used
         float        ao_length;
+        int          spp;          // samples per pixel to use
+        SamplingType sample_type;  // AO or AA sampling; AO includes one extra sample for the primary ray
     } m_settings;
 
     struct {
@@ -118,54 +118,53 @@ private:
     App& operator=(const App&);  // forbidden
 
 private:
-    Window         m_window;
-    CommonControls m_commonCtrl;
-    CameraControls m_cameraCtrl;
+    Mat4f previousCamera = Mat4f(0);
 
-    Action   m_action;
-    CullMode m_cullMode;
-    String   m_meshFileName;
+    Action         m_action;
+    CameraControls m_cameraCtrl;
+    CommonControls m_commonCtrl;
+    CullMode       m_cullMode;
+    Image          m_img;
+    String         m_meshFileName;
+    Timer          m_updateClock;
+    Window         m_window;
 
     std::unique_ptr<AreaLight>              m_areaLight;
     std::unique_ptr<MeshWithColors>         m_mesh;
-    std::unique_ptr<PathTraceRenderer>      m_pathtrace_renderer;
+    std::unique_ptr<PathTraceRenderer>      m_pathTraceRenderer;
     std::unique_ptr<RayTracer>              m_rt;
     std::unique_ptr<std::vector<AreaLight>> m_areaLights;
     std::vector<RTTriangle>                 m_rtTriangles;
     std::vector<Vec3f>                      m_rtVertexPositions;  // kept only for MD5 checksums
 
-    Image m_img;
-    Mat4f previous_camera = Mat4f(0);
-    Timer m_updateClock;
-
-    bool         clear_on_next_frame = false;
-    bool         m_bilinear;
-    bool         m_clearVisualization = false;
-    bool         m_depth_of_field;
-    bool         m_normalMapped;
-    bool         m_playbackVisualization = false;
-    bool         m_RTMode;
-    bool         m_sobol_block;
-    bool         m_use_sah;
-    bool         m_useRussianRoulette;
-    bool         m_whitted;
-    float        m_lightSize;
-    float        m_aperture;
-    float        m_emission_blue;
-    float        m_emission_green;
-    float        m_emission_red;
-    float        m_filter_width;
-    float        m_focal_distance;
-    float        m_light_intensity;
-    float        m_saturation;
-    float        m_termination;
-    float        m_visualizationAlpha = 1;
-    int          m_numBounces;
-    int          m_currentVisualizationIndex = 0;
-    int          m_numAARays;
-    int          m_numDebugPathCount = 1;
-    int          m_numLightRays;
-    unsigned int m_light_index;
+    bool  clearOnNextFrame = false;
+    bool  m_bilinear;
+    bool  m_clearVisualization = false;
+    bool  m_depthOfField;
+    bool  m_normalMapped;
+    bool  m_playbackVisualization = false;
+    bool  m_RTMode;
+    bool  m_sobolBlock;
+    bool  m_sah;
+    bool  m_useRussianRoulette;
+    bool  m_whitted;
+    float m_lightSize;
+    float m_aperture;
+    float m_emissionBlue;
+    float m_emissionGreen;
+    float m_emissionRed;
+    float m_filterWidth;
+    float m_focalDistance;
+    float m_lightintensity;
+    float m_saturation;
+    float m_termination;
+    float m_visualizationAlpha = 1;
+    int   m_numBounces;
+    int   m_currentVisualizationIndex = 0;
+    int   m_numAARays;
+    int   m_numDebugPathCount = 1;
+    int   m_numLightRays;
+    int   m_lightIndex;
 
     std::vector<PathVisualizationNode> m_visualization;
 };

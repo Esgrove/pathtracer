@@ -15,20 +15,20 @@ public:
     // constructor
     BVH() {};
     BVH(std::vector<RTTriangle>* triangles, bool sah);
-    BVH(std::vector<RTTriangle>* triangles, std::vector<unsigned int> list, std::vector<flatNode> nodes, unsigned int depth)
-        : triangles(triangles)
+    BVH(std::vector<RTTriangle>* triangles, std::vector<__int32> list, std::vector<flatNode> nodes, int depth)
+        : m_triangles(triangles)
         , list(list)
         , nodes(nodes)
         , depth(depth) {};
 
     // builds tree recursively
-    void construct(std::unique_ptr<Node>& node, unsigned int start_idx, unsigned int end_idx);
+    void construct(std::unique_ptr<Node>& node, int startIdx, int endIdx);
 
     // flattens tree to vector
     void flatten(std::unique_ptr<Node>& node);
 
     // finds bounding box limits
-    FW::AABB computeBB(unsigned int start_idx, unsigned int end_idx);
+    FW::AABB computeBB(int startIdx, int endIdx);
 
     AABB Union(AABB a, AABB b);
     AABB Union(AABB a, Vec3f b);
@@ -37,24 +37,22 @@ public:
     std::unique_ptr<Node> root;
 
     // index list to triangles
-    std::vector<unsigned __int32> list;
+    std::vector<__int32> list;
 
     // list of nodes
     std::vector<flatNode> nodes;
 
     // tree depth
-    unsigned __int32 depth = 0;
+    __int32 depth = 0;
 
 private:
-    bool sah_enabled;
+    bool m_sahEnabled;
 
-    unsigned __int32 bad_splits = 0;
-    unsigned __int32 total_splits = 0;
-
-    // max triangles in leaf node
-    unsigned __int32 max_tris = 3;
+    __int32 badSplits = 0;
+    __int32 totalSplits = 0;
+    __int32 maxTrisInLeaf = 3;
 
     // actual triangle data
-    std::vector<RTTriangle>* triangles;
+    std::vector<RTTriangle>* m_triangles;
 };
 }  // namespace FW

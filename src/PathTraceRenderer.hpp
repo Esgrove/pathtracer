@@ -97,43 +97,44 @@ public:
     static Vec3f tracePath(float x, float y, PathTracerContext& ctx, int samplerBase, Random& rnd, std::vector<PathVisualizationNode>& visualization);
     static Vec3f traceWhitted(float x, float y, PathTracerContext& ctx, int samplerBase, Random& rnd, std::vector<PathVisualizationNode>& visualization);
 
-    static void         pathTraceBlock(MulticoreLauncher::Task& t);
-    static void         getTextureParameters(const RaycastResult& hit, Vec3f& diffuse, Vec3f& n, Vec3f& specular);
-    static unsigned int getLightToSample(const Vec3f pos, const std::vector<AreaLight>* lights, Random& R);
+    static void pathTraceBlock(MulticoreLauncher::Task& t);
+    static void getTextureParameters(const RaycastResult& hit, Vec3f& diffuse, Vec3f& n, Vec3f& specular);
+    static int  getLightToSample(const Vec3f pos, const std::vector<AreaLight>* lights, Random& R);
 
     void updatePicture(Image* display);  // normalize by 1/w
     void checkFinish(void);
     void stop(void);
     void setNormalMapped(bool b) { m_normalMapped = b; }
-    void setBilinearFiltering(bool b) { m_bilinear_filtering = b; }
+    void setBilinearFiltering(bool b) { m_bilinearFiltering = b; }
     void setWhitted(bool b) { m_whitted = b; }
-    void setDOF(bool b) { m_depth_of_field = b; }
-    void setAAmode(bool b) { m_sobol_block = b; }
-    void setAArays(int a) { m_aaNumRays = a; }
+    void setDOF(bool b) { m_depthOfField = b; }
+    void setAAmode(bool b) { m_sobolBlock = b; }
+    void setAArays(int a) { m_NumAaRays = a; }
     void setLightRays(int a) { m_numLightRays = a; }
-    void setFilterWidth(float a) { m_filt_width = a; }
+    void setFilterWidth(float a) { m_filterWidth = a; }
     void setIntensity(float a) { m_intensity = a; }
     void setAttenuation(float a) { m_attenuation = a; }
-    void setFocalDistance(float a) { m_focal_distance = a; }
+    void setFocalDistance(float a) { m_focalDistance = a; }
     void setAperture(float a) { m_aperture = a; }
-    void setTermination(float a) { m_termination_prob = a; }
+    void setTermination(float a) { m_terminationProbability = a; }
     void resetRays() { m_TotalRays = 0; }
 
 protected:
     MulticoreLauncher m_launcher;
 
     float            m_raysPerSecond;
-    static bool      m_bilinear_filtering;
+    static bool      m_bilinearFiltering;
+    static bool      m_depthOfField;
     static bool      m_normalMapped;
-    static bool      m_sobol_block;
+    static bool      m_sobolBlock;
     static bool      m_whitted;
     static float     m_aperture;
     static float     m_attenuation;
-    static float     m_filt_width;
-    static float     m_focal_distance;
+    static float     m_filterWidth;
+    static float     m_focalDistance;
     static float     m_intensity;
-    static float     m_termination_prob;
-    static int       m_aaNumRays;
+    static float     m_terminationProbability;
+    static int       m_NumAaRays;
     static int       m_numLightRays;
     unsigned __int64 m_TotalRays;
 };

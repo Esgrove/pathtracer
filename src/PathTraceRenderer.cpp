@@ -13,18 +13,18 @@
 namespace FW {
 
 bool  PathTraceRenderer::debugVis = false;
-bool  PathTraceRenderer::m_bilinear_filtering = true;
-bool  PathTraceRenderer::m_depth_of_field = false;
+bool  PathTraceRenderer::m_bilinearFiltering = true;
+bool  PathTraceRenderer::m_depthOfField = false;
 bool  PathTraceRenderer::m_normalMapped = false;
-bool  PathTraceRenderer::m_sobol_block = false;
+bool  PathTraceRenderer::m_sobolBlock = false;
 bool  PathTraceRenderer::m_whitted = false;
 float PathTraceRenderer::m_aperture = 0.0f;
 float PathTraceRenderer::m_attenuation = 1.0f;
-float PathTraceRenderer::m_filt_width = 1.0f;
-float PathTraceRenderer::m_focal_distance = 0.5f;
+float PathTraceRenderer::m_filterWidth = 1.0f;
+float PathTraceRenderer::m_focalDistance = 0.5f;
 float PathTraceRenderer::m_intensity = 1.0f;
-float PathTraceRenderer::m_termination_prob = 0.2f;
-int   PathTraceRenderer::m_aaNumRays = 4;
+float PathTraceRenderer::m_terminationProbability = 0.2f;
+int   PathTraceRenderer::m_NumAaRays = 4;
 int   PathTraceRenderer::m_numLightRays = 32;
 
 const float invPi = 0.31830988618379f;
@@ -84,7 +84,7 @@ void PathTraceRenderer::getTextureParameters(const RaycastResult& hit, Vec3f& di
         const Texture& tex = mat->textures[MeshBase::TextureType_Diffuse];
         const Image&   teximg = *tex.getImage();
 
-        if (m_bilinear_filtering) {
+        if (m_bilinearFiltering) {
             // https://en.wikipedia.org/wiki/Bilinear_filtering
 
             float fx = uv.x - floor(uv.x);  // {x}
@@ -179,28 +179,34 @@ void PathTraceRenderer::getTextureParameters(const RaycastResult& hit, Vec3f& di
         specular = img.getVec4f(texelCoords).getXYZ();
     }
 }
-unsigned int PathTraceRenderer::getLightToSample(const Vec3f pos, const std::vector<AreaLight>* lights, Random& R) {
+
+int PathTraceRenderer::getLightToSample(const Vec3f pos, const std::vector<AreaLight>* lights, Random& R) {
     auto size = (*lights).size();
     if (size <= 1) {
+        // only one light
         return 0;
-    }  // only one light
+    }
 
     std::valarray<float> values(size);
-    for (unsigned int i = 0; i < size; i++) {
-        values[i] = (*lights)[i].getPower();  // / (pos - (*lights)[i].getPosition()).length(); // emissive power divided by distance;
+    for (auto i = 0; i < size; i++) {
+        // emissive power divided by distance;
+        values[i] = (*lights)[i].getPower() / (pos - (*lights)[i].getPosition()).length();
     }
+
+    // normalize
     values /= values.sum();
 
     float r = R.getF32(0.0f, 1.0f);
-
     float value = 0.0f;
-    for (unsigned int i = 0; i < size; i++) {
+    for (auto i = 0; i < size; i++) {
         value += values[i];
         if (r <= value) {
             return i;
         }
     }
-    return size - 1;  // just to be sure that something is returned always...
+
+    // just to be sure that something is returned always...
+    return static_cast<int>(size - 1);
 }
 
 PathTracerContext::PathTracerContext()
@@ -259,14 +265,14 @@ Vec3f PathTraceRenderer::tracePath(float x, float y, PathTracerContext& ctx, int
     // intersections that come after the point Ro+Rd are to be discarded.
     Rd = Rd - Ro;
 
-    if (m_depth_of_field) {
+    if (m_depthOfField) {
         // focal point
         Vec3f Rn = Rd.normalized();          // normalized ray direction
         Vec3f Pn = cameraCtrl.getForward();  // focal plane normal
 
         // distance from ray origin to focal plane:
         // distance is increased when ray does not point directly to the focal plane normal direction
-        float Pd = m_focal_distance / max(0.01f, dot(Rn, Pn));
+        float Pd = m_focalDistance / max(0.01f, dot(Rn, Pn));
         Vec3f Rf = Ro + Pd * Rn;  // origin + distance * direction
 
         // random sample on disk (aperture)
@@ -457,10 +463,10 @@ Vec3f PathTraceRenderer::tracePath(float x, float y, PathTracerContext& ctx, int
         // russian roulette
         if (ctx.m_bounces < 0) {
             float terminate = R.getF32(0.0f, 1.0f);
-            float inv_prob = 1.0f / m_termination_prob;
+            float inv_prob = 1.0f / m_terminationProbability;
 
             // continue path or terminate?
-            while (terminate > m_termination_prob) {
+            while (terminate > m_terminationProbability) {
                 // Draw a cosine weighted direction
                 V = normalize(formBasis(N) * drawCosineWeightedDirection(samplerBase, bounce, R));
 
@@ -573,12 +579,12 @@ Vec3f PathTraceRenderer::traceWhitted(float x, float y, PathTracerContext& ctx, 
     // intersections that come _after_ the point Ro+Rd are to be discarded.
     Rd = Rd - Ro;
 
-    if (m_depth_of_field) {
+    if (m_depthOfField) {
         // focal plane
-        Vec3f Rn = Rd.normalized();                 // normalized ray direction
-        Vec3f Pn = cameraCtrl.getForward();         // "focal plane" normal
-        float Pd = m_focal_distance / dot(Rn, Pn);  // distance from ray origin to focal plane:
-        Vec3f Rf = Ro + Pd * Rn;                    // origin + distance * direction
+        Vec3f Rn = Rd.normalized();                // normalized ray direction
+        Vec3f Pn = cameraCtrl.getForward();        // "focal plane" normal
+        float Pd = m_focalDistance / dot(Rn, Pn);  // distance from ray origin to focal plane:
+        Vec3f Rf = Ro + Pd * Rn;                   // origin + distance * direction
 
         // random sample on disk (aperture)
         F32 xr, yr, a, b;
@@ -690,12 +696,12 @@ void PathTraceRenderer::pathTraceBlock(MulticoreLauncher::Task& t) {
     float div_x = 1.0f / (float)width;
     float div_y = 1.0f / (float)height;
 
-    float filt_scale = 2.0f / m_filt_width;
+    float filt_scale = 2.0f / m_filterWidth;
 
     float a = 0.0f, b = 0.0f;
 
-    if (m_sobol_block) {
-        for (int i = 0; i < block.m_width * block.m_height * m_aaNumRays; i++) {
+    if (m_sobolBlock) {
+        for (int i = 0; i < block.m_width * block.m_height * m_NumAaRays; i++) {
             if (ctx.m_bForceExit) {
                 return;
             }
@@ -719,7 +725,7 @@ void PathTraceRenderer::pathTraceBlock(MulticoreLauncher::Task& t) {
             int pixel_y = min((int)floor(py), height - 1);
 
             Vec4f prev = image->getVec4f(Vec2i(pixel_x, pixel_y));
-            prev += Vec4f(color, 1.0f) / (float)m_aaNumRays;
+            prev += Vec4f(color, 1.0f) / (float)m_NumAaRays;
             image->setVec4f(Vec2i(pixel_x, pixel_y), prev);
         }
     } else {
@@ -731,12 +737,12 @@ void PathTraceRenderer::pathTraceBlock(MulticoreLauncher::Task& t) {
             int pixel_x = block.m_x + (i % block.m_width);
             int pixel_y = block.m_y + (i / block.m_width);
 
-            // AA: draw #m_aaNumRays samples around pixel
+            // AA: draw #m_NumAaRays samples around pixel
             Vec4f color_AA(0.0f);
-            for (int k = 0; k < m_aaNumRays; k++) {
+            for (int k = 0; k < m_NumAaRays; k++) {
                 // int r = R.getU32(1, 8765);
-                a = m_filt_width * (sobol::sample(base + i + k, 0) - 0.5f) + 0.5f;
-                b = m_filt_width * (sobol::sample(base + i + k, 1) - 0.5f) + 0.5f;
+                a = m_filterWidth * (sobol::sample(base + i + k, 0) - 0.5f) + 0.5f;
+                b = m_filterWidth * (sobol::sample(base + i + k, 1) - 0.5f) + 0.5f;
 
                 // generate ray through pixel
                 float px = (float)pixel_x + a;
@@ -876,9 +882,9 @@ void PathTraceRenderer::checkFinish() {
         ++m_context.m_pass;
 
         float time
-            = (float)std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - m_context.start)
-                  .count()
-            / 1000.0f;
+            = 0.001f
+            * static_cast<float>(
+                  std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - m_context.start).count());
 
         // calculate average rays per second
         m_TotalRays += m_context.m_rt->getRayCount();
@@ -894,22 +900,22 @@ void PathTraceRenderer::checkFinish() {
         }
         std::printf("Total Mrays: %6.1f (%5.2f Mrays/sec)\n", m_TotalRays / 1000000.0f, m_raysPerSecond / 1000000.0f);
 
-        // you may want to uncomment this to write out a sequence of PNG images
-        // after the completion of each full round through the image.
+        // after the completion of each full round through the image
         String fn = sprintf("pt-%03dppp.png", m_context.m_pass);
         File   outfile(fn, File::Create);
+        exportLodePngImage(outfile, m_context.m_destImage);
+
         if (!m_context.m_bForceExit) {
             // keep going
-
-            // If you change this, change the one in startPathTracingProcess too.
             m_launcher.setNumThreads(m_launcher.getNumCores());
+            // DEBUG: Enable this for debugging theading issues
             // m_launcher.setNumThreads(1);
-
             m_launcher.popAll();
             m_launcher.push(pathTraceBlock, &m_context, 0, (int)m_context.m_blocks.size());
             ::printf("Pass %d\n", m_context.m_pass);
-        } else
+        } else {
             ::printf("\nStopped!\n");
+        }
     }
 }
 

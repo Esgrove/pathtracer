@@ -37,21 +37,21 @@ App::App(std::vector<std::string>& cmd_args)
     , m_normalMapped(false)
     , m_bilinear(true)
     , m_whitted(false)
-    , m_use_sah(true)
-    , m_depth_of_field(false)
-    , m_sobol_block(true)
-    , m_focal_distance(0.1f)
+    , m_sah(true)
+    , m_depthOfField(false)
+    , m_sobolBlock(true)
+    , m_focalDistance(0.1f)
     , m_aperture(0.0001f)
     , m_termination(0.2f)
-    , m_filter_width(1.0f)
+    , m_filterWidth(1.0f)
     , m_numAARays(4)
     , m_numLightRays(32)
-    , m_light_intensity(1.0f)
+    , m_lightintensity(1.0f)
     , m_saturation(1.0f)
-    , m_emission_red(100.0f)
-    , m_emission_green(100.0f)
-    , m_emission_blue(100.0f)
-    , m_light_index(0)
+    , m_emissionRed(100.0f)
+    , m_emissionGreen(100.0f)
+    , m_emissionBlue(100.0f)
+    , m_lightIndex(0)
     , m_img(Vec2i(10, 10), ImageFormat::RGBA_Vec4f)  // will get resized immediately
 {
     m_commonCtrl.showFPS(false);
@@ -71,43 +71,43 @@ App::App(std::vector<std::string>& cmd_args)
     m_commonCtrl.addSeparator();
 
     m_commonCtrl.addButton((S32*)&m_action, Action_PathTraceMode, FW_KEY_ENTER, "Path trace mode (ENTER)");
-    m_commonCtrl.addButton((S32*)&m_action, Action_PlaceLightSourceAtCamera, FW_KEY_SPACE, "Place light at camera (SPACE)", &clear_on_next_frame);
+    m_commonCtrl.addButton((S32*)&m_action, Action_PlaceLightSourceAtCamera, FW_KEY_SPACE, "Place light at camera (SPACE)", &clearOnNextFrame);
     m_commonCtrl.addButton(&m_clearVisualization, FW_KEY_BACKSPACE, "Clear visualization (BACKSPACE)");
     m_commonCtrl.addToggle(&m_playbackVisualization, FW_KEY_NONE, "Visualization playback");
     m_commonCtrl.addSeparator();
-    m_commonCtrl.addButton((S32*)&m_action, Action_AddLight, FW_KEY_L, "Add Light (L)", &clear_on_next_frame);
+    m_commonCtrl.addButton((S32*)&m_action, Action_AddLight, FW_KEY_L, "Add Light (L)", &clearOnNextFrame);
     m_commonCtrl.addButton((S32*)&m_action, Action_ChangeLight, FW_KEY_ALT, "Change controlled light (ALT)");
     m_commonCtrl.addSeparator();
-    m_commonCtrl.addToggle(&m_useRussianRoulette, FW_KEY_NONE, "Russian Roulette", &clear_on_next_frame);
-    m_commonCtrl.addToggle(&m_normalMapped, FW_KEY_N, "Normal mapping (N)", &clear_on_next_frame);
-    m_commonCtrl.addToggle(&m_use_sah, FW_KEY_NONE, "SAH", &clear_on_next_frame);
-    m_commonCtrl.addToggle(&m_sobol_block, FW_KEY_TAB, "Sobol block AA mode (TAB)", &clear_on_next_frame);
-    m_commonCtrl.addToggle(&m_depth_of_field, FW_KEY_C, "Depth of field (C)", &clear_on_next_frame);
-    m_commonCtrl.addToggle(&m_bilinear, FW_KEY_B, "Bilinear texture filtering (B)", &clear_on_next_frame);
-    m_commonCtrl.addToggle(&m_whitted, FW_KEY_V, "Whitted integrator (V)", &clear_on_next_frame);
+    m_commonCtrl.addToggle(&m_useRussianRoulette, FW_KEY_NONE, "Russian Roulette", &clearOnNextFrame);
+    m_commonCtrl.addToggle(&m_normalMapped, FW_KEY_N, "Normal mapping (N)", &clearOnNextFrame);
+    m_commonCtrl.addToggle(&m_sah, FW_KEY_NONE, "SAH", &clearOnNextFrame);
+    m_commonCtrl.addToggle(&m_sobolBlock, FW_KEY_TAB, "Sobol block AA mode (TAB)", &clearOnNextFrame);
+    m_commonCtrl.addToggle(&m_depthOfField, FW_KEY_C, "Depth of field (C)", &clearOnNextFrame);
+    m_commonCtrl.addToggle(&m_bilinear, FW_KEY_B, "Bilinear texture filtering (B)", &clearOnNextFrame);
+    m_commonCtrl.addToggle(&m_whitted, FW_KEY_V, "Whitted integrator (V)", &clearOnNextFrame);
 
     m_commonCtrl.beginSliderStack();
-    m_commonCtrl.addSlider(&m_termination, 0.1f, 0.5f, false, FW_KEY_NONE, FW_KEY_NONE, "Roulette termination prob.= %.2f", 0, &clear_on_next_frame);
-    m_commonCtrl.addSlider(&m_numAARays, 4, 2048, true, FW_KEY_NONE, FW_KEY_NONE, "AA rays= %d", 0, &clear_on_next_frame);
-    m_commonCtrl.addSlider(&m_numBounces, 0, 8, false, FW_KEY_NONE, FW_KEY_NONE, "Number of indirect bounces= %d", 0, &clear_on_next_frame);
-    m_commonCtrl.addSlider(&m_lightSize, 0.01f, 64.0f, true, FW_KEY_NONE, FW_KEY_NONE, "Light area= %f", 0, &clear_on_next_frame);
+    m_commonCtrl.addSlider(&m_termination, 0.1f, 0.5f, false, FW_KEY_NONE, FW_KEY_NONE, "Roulette termination prob.= %.2f", 0, &clearOnNextFrame);
+    m_commonCtrl.addSlider(&m_numAARays, 4, 2048, true, FW_KEY_NONE, FW_KEY_NONE, "AA rays= %d", 0, &clearOnNextFrame);
+    m_commonCtrl.addSlider(&m_numBounces, 0, 8, false, FW_KEY_NONE, FW_KEY_NONE, "Number of indirect bounces= %d", 0, &clearOnNextFrame);
+    m_commonCtrl.addSlider(&m_lightSize, 0.01f, 64.0f, true, FW_KEY_NONE, FW_KEY_NONE, "Light area= %f", 0, &clearOnNextFrame);
     m_commonCtrl.endSliderStack();
     m_commonCtrl.beginSliderStack();
-    m_commonCtrl.addSlider(&m_focal_distance, 0.05f, 1.0f, true, FW_KEY_NONE, FW_KEY_NONE, "Focal distance= %.3f", 0, &clear_on_next_frame);
-    m_commonCtrl.addSlider(&m_filter_width, 1.0f, 2.0f, false, FW_KEY_NONE, FW_KEY_NONE, "AA filter width= %.2f", 0, &clear_on_next_frame);
+    m_commonCtrl.addSlider(&m_focalDistance, 0.05f, 1.0f, true, FW_KEY_NONE, FW_KEY_NONE, "Focal distance= %.3f", 0, &clearOnNextFrame);
+    m_commonCtrl.addSlider(&m_filterWidth, 1.0f, 2.0f, false, FW_KEY_NONE, FW_KEY_NONE, "AA filter width= %.2f", 0, &clearOnNextFrame);
     m_commonCtrl.addSlider(&m_numDebugPathCount, 1, 1000, true, FW_KEY_NONE, FW_KEY_NONE, "Number of debug paths to fire= %d");
     m_commonCtrl.addSlider(&m_visualizationAlpha, 0.01f, 1.0f, false, FW_KEY_NONE, FW_KEY_NONE, "Debug ray visualization alpha= %f");
     m_commonCtrl.endSliderStack();
     m_commonCtrl.beginSliderStack();
-    m_commonCtrl.addSlider(&m_aperture, 0.0001f, 0.01f, true, FW_KEY_NONE, FW_KEY_NONE, "Aperture size= %.4f", 0, &clear_on_next_frame);
-    m_commonCtrl.addSlider(&m_numLightRays, 1, 128, true, FW_KEY_NONE, FW_KEY_NONE, "Light sample rays= %d", 0, &clear_on_next_frame);
-    m_commonCtrl.addSlider(&m_light_intensity, 1.0f, 1024.0f, true, FW_KEY_NONE, FW_KEY_NONE, "light intensity= %.3f", 0.1f, &clear_on_next_frame);
-    m_commonCtrl.addSlider(&m_saturation, 0.1f, 2.0f, true, FW_KEY_NONE, FW_KEY_NONE, "saturation= %.3f", 0.1f, &clear_on_next_frame);
+    m_commonCtrl.addSlider(&m_aperture, 0.0001f, 0.01f, true, FW_KEY_NONE, FW_KEY_NONE, "Aperture size= %.4f", 0, &clearOnNextFrame);
+    m_commonCtrl.addSlider(&m_numLightRays, 1, 128, true, FW_KEY_NONE, FW_KEY_NONE, "Light sample rays= %d", 0, &clearOnNextFrame);
+    m_commonCtrl.addSlider(&m_lightintensity, 1.0f, 1024.0f, true, FW_KEY_NONE, FW_KEY_NONE, "light intensity= %.3f", 0.1f, &clearOnNextFrame);
+    m_commonCtrl.addSlider(&m_saturation, 0.1f, 2.0f, true, FW_KEY_NONE, FW_KEY_NONE, "saturation= %.3f", 0.1f, &clearOnNextFrame);
     m_commonCtrl.endSliderStack();
     m_commonCtrl.beginSliderStack();
-    m_commonCtrl.addSlider(&m_emission_red, 0.0f, 100.0f, false, FW_KEY_NONE, FW_KEY_NONE, "red= %.2f", 0, &clear_on_next_frame);
-    m_commonCtrl.addSlider(&m_emission_green, 0.0f, 100.0f, false, FW_KEY_NONE, FW_KEY_NONE, "green= %.2f", 0, &clear_on_next_frame);
-    m_commonCtrl.addSlider(&m_emission_blue, 0.0f, 100.0f, false, FW_KEY_NONE, FW_KEY_NONE, "blue= %.2f", 0, &clear_on_next_frame);
+    m_commonCtrl.addSlider(&m_emissionRed, 0.0f, 100.0f, false, FW_KEY_NONE, FW_KEY_NONE, "red= %.2f", 0, &clearOnNextFrame);
+    m_commonCtrl.addSlider(&m_emissionGreen, 0.0f, 100.0f, false, FW_KEY_NONE, FW_KEY_NONE, "green= %.2f", 0, &clearOnNextFrame);
+    m_commonCtrl.addSlider(&m_emissionBlue, 0.0f, 100.0f, false, FW_KEY_NONE, FW_KEY_NONE, "blue= %.2f", 0, &clearOnNextFrame);
     m_commonCtrl.endSliderStack();
 
     m_window.addListener(this);
@@ -116,11 +116,11 @@ App::App(std::vector<std::string>& cmd_args)
     m_window.setTitle("Path Tracer");
     m_commonCtrl.setStateFilePrefix("state_");
 
-    m_window.setSize(Vec2i(1200, 800));
-    m_pathtrace_renderer.reset(new PathTraceRenderer);
+    m_window.setSize(Vec2i(1920, 1080));
+    m_pathTraceRenderer.reset(new PathTraceRenderer);
     m_areaLights.reset(new std::vector<AreaLight>);
 
-    AreaLight light(Vec3f(m_emission_red, m_emission_green, m_emission_blue), Vec2f(m_lightSize, m_lightSize), m_light_intensity);
+    AreaLight light(Vec3f(m_emissionRed, m_emissionGreen, m_emissionBlue), Vec2f(m_lightSize, m_lightSize), m_lightintensity);
 
     light.setPosition(Vec3f(0.0f));
     light.setOrientation(Mat3f());
@@ -136,7 +136,7 @@ App::App(std::vector<std::string>& cmd_args)
 
 /// returns the index of the needle in the haystack or -1 if not found
 int find_argument(std::string needle, std::vector<std::string> haystack) {
-    for (unsigned j = 0; j < haystack.size(); ++j)
+    for (auto j = 0; j < haystack.size(); ++j)
         if (!haystack[j].compare(needle))
             return j;
 
@@ -178,7 +178,7 @@ void App::process_args(std::vector<std::string>& args) {
     m_settings.spp = 1;
     m_settings.use_sah = true;
 
-    for (unsigned i = 0; i < args.size(); ++i) {
+    for (auto i = 0; i < args.size(); ++i) {
         // try to recognize the argument
         argument cmd = argument(find_argument(args[i], argument_names));
 
@@ -242,7 +242,7 @@ App::~App() {}
 
 bool App::handleEvent(const Window::Event& ev) {
     if (ev.type == Window::EventType_Close) {
-        m_pathtrace_renderer->stop();
+        m_pathTraceRenderer->stop();
 
         m_window.showModalMessage("Exiting...");
         delete this;
@@ -400,53 +400,53 @@ bool App::handleEvent(const Window::Event& ev) {
 
         case Action_PlaceLightSourceAtCamera:
 
-            (*m_areaLights)[m_light_index].setOrientation(m_cameraCtrl.getCameraToWorld().getXYZ());
-            (*m_areaLights)[m_light_index].setPosition(m_cameraCtrl.getPosition());
+            (*m_areaLights)[m_lightIndex].setOrientation(m_cameraCtrl.getCameraToWorld().getXYZ());
+            (*m_areaLights)[m_lightIndex].setPosition(m_cameraCtrl.getPosition());
 
             m_commonCtrl.message("Placed light at camera");
             break;
 
         case Action_AddLight:
 
-            m_pathtrace_renderer->stop();
+            m_pathTraceRenderer->stop();
             m_RTMode = false;
 
-            light = AreaLight(Vec3f(m_emission_red, m_emission_green, m_emission_blue), Vec2f(m_lightSize), m_light_intensity);
+            light = AreaLight(Vec3f(m_emissionRed, m_emissionGreen, m_emissionBlue), Vec2f(m_lightSize), m_lightintensity);
 
             light.setOrientation(m_cameraCtrl.getCameraToWorld().getXYZ());
             light.setPosition(m_cameraCtrl.getPosition());
 
             m_areaLights->push_back(light);
 
-            m_light_index = m_areaLights->size() - 1;
+            m_lightIndex = static_cast<int>(m_areaLights->size() - 1);
 
             m_commonCtrl.message("Placed new light at camera");
             break;
 
         case Action_ChangeLight:
 
-            m_pathtrace_renderer->stop();
+            m_pathTraceRenderer->stop();
             m_RTMode = false;
 
-            m_light_index += 1;
-            if (m_light_index >= m_areaLights->size()) {
-                m_light_index = 0;
+            m_lightIndex += 1;
+            if (m_lightIndex >= m_areaLights->size()) {
+                m_lightIndex = 0;
             }
 
             // update sliders to match light settings
-            m_lightSize = (*m_areaLights)[m_light_index].getSize().x;
-            m_emission_red = (*m_areaLights)[m_light_index].getEmission().x;
-            m_emission_green = (*m_areaLights)[m_light_index].getEmission().y;
-            m_emission_blue = (*m_areaLights)[m_light_index].getEmission().z;
-            m_light_intensity = (*m_areaLights)[m_light_index].getIntensity();
+            m_lightSize = (*m_areaLights)[m_lightIndex].getSize().x;
+            m_emissionRed = (*m_areaLights)[m_lightIndex].getEmission().x;
+            m_emissionGreen = (*m_areaLights)[m_lightIndex].getEmission().y;
+            m_emissionBlue = (*m_areaLights)[m_lightIndex].getEmission().z;
+            m_lightintensity = (*m_areaLights)[m_lightIndex].getIntensity();
 
-            m_commonCtrl.message(sprintf("Controlling light %d", m_light_index));
+            m_commonCtrl.message(sprintf("Controlling light %d", m_lightIndex));
             break;
 
         case Action_PathTraceMode:
             m_RTMode = !m_RTMode;
             if (m_RTMode) {
-                m_pathtrace_renderer->stop();
+                m_pathTraceRenderer->stop();
                 if (m_img.getSize() != m_window.getSize()) {
                     // Replace m_img with a new Image. TODO: Clean this up.
                     m_img.~Image();
@@ -455,25 +455,25 @@ bool App::handleEvent(const Window::Event& ev) {
                 m_rt->resetRayCounter();
 
                 // update tracing settings
-                m_pathtrace_renderer->resetRays();
-                m_pathtrace_renderer->setNormalMapped(m_normalMapped);
-                m_pathtrace_renderer->setBilinearFiltering(m_bilinear);
-                m_pathtrace_renderer->setWhitted(m_whitted);
-                m_pathtrace_renderer->setAArays(m_numAARays);
-                m_pathtrace_renderer->setLightRays(m_numLightRays);
-                m_pathtrace_renderer->setFilterWidth(m_filter_width);
-                m_pathtrace_renderer->setAttenuation(m_saturation);
-                m_pathtrace_renderer->setDOF(m_depth_of_field);
-                m_pathtrace_renderer->setFocalDistance(m_focal_distance);
-                m_pathtrace_renderer->setAperture(m_aperture);
-                m_pathtrace_renderer->setAAmode(m_sobol_block);
-                m_pathtrace_renderer->setTermination(m_termination);
-                m_pathtrace_renderer->startPathTracingProcess(
+                m_pathTraceRenderer->resetRays();
+                m_pathTraceRenderer->setNormalMapped(m_normalMapped);
+                m_pathTraceRenderer->setBilinearFiltering(m_bilinear);
+                m_pathTraceRenderer->setWhitted(m_whitted);
+                m_pathTraceRenderer->setAArays(m_numAARays);
+                m_pathTraceRenderer->setLightRays(m_numLightRays);
+                m_pathTraceRenderer->setFilterWidth(m_filterWidth);
+                m_pathTraceRenderer->setAttenuation(m_saturation);
+                m_pathTraceRenderer->setDOF(m_depthOfField);
+                m_pathTraceRenderer->setFocalDistance(m_focalDistance);
+                m_pathTraceRenderer->setAperture(m_aperture);
+                m_pathTraceRenderer->setAAmode(m_sobolBlock);
+                m_pathTraceRenderer->setTermination(m_termination);
+                m_pathTraceRenderer->startPathTracingProcess(
                     m_mesh.get(), m_areaLights.get(), m_rt.get(), &m_img, m_useRussianRoulette ? -m_numBounces : m_numBounces, m_cameraCtrl);
                 ::printf("\nRendering started:\n");
                 ::printf("Pass 0\n");
             } else {
-                m_pathtrace_renderer->stop();
+                m_pathTraceRenderer->stop();
                 ::printf("\nStopped...\n");
             }
             break;
@@ -490,15 +490,15 @@ bool App::handleEvent(const Window::Event& ev) {
             pos.y = pos.y / (float)m_window.getSize().y * -2.0f + 1.0f;
             // printf("pos: %.3f, %.3f\n", pos.x, pos.y);
 
-            m_pathtrace_renderer->stop();
+            m_pathTraceRenderer->stop();
             m_visualization.clear();
-            m_pathtrace_renderer->debugVis = true;
+            m_pathTraceRenderer->debugVis = true;
 
             Random rnd;
             for (int i = 0; i < m_numDebugPathCount; ++i)
-                m_pathtrace_renderer->tracePath(pos.x, pos.y, m_pathtrace_renderer->m_context, rnd.getU32(1, 100000), rnd, m_visualization);
+                m_pathTraceRenderer->tracePath(pos.x, pos.y, m_pathTraceRenderer->m_context, rnd.getU32(1, 100000), rnd, m_visualization);
 
-            m_pathtrace_renderer->debugVis = false;
+            m_pathTraceRenderer->debugVis = false;
             m_RTMode = false;
         }
 
@@ -509,7 +509,7 @@ bool App::handleEvent(const Window::Event& ev) {
             pos.x = pos.x / (float)m_window.getSize().x * 2.0f - 1.0f;
             pos.y = pos.y / (float)m_window.getSize().y * -2.0f + 1.0f;
 
-            m_pathtrace_renderer->stop();
+            m_pathTraceRenderer->stop();
             m_RTMode = false;
 
             Mat4f worldToCamera = m_cameraCtrl.getWorldToCamera();
@@ -536,9 +536,9 @@ bool App::handleEvent(const Window::Event& ev) {
             RaycastResult result = m_rt->raycast(Ro, Rd, false);
 
             // set focal distance to nearest intersect point
-            m_focal_distance = (result.point - result.orig).length();
+            m_focalDistance = (result.point - result.orig).length();
 
-            printf("focal distance set: %f\n", m_focal_distance);
+            printf("focal distance set: %f\n", m_focalDistance);
         }
     }
     m_window.setVisible(true);
@@ -596,11 +596,11 @@ void App::renderFrame(GLContext* gl) {
     Mat4f projection = gl->xformFitToView(Vec2f(-1.0f, -1.0f), Vec2f(2.0f, 2.0f)) * m_cameraCtrl.getCameraToClip();
     Mat4f worldToClip = projection * worldToCamera;
 
-    if (worldToClip != previous_camera || clear_on_next_frame) {
-        previous_camera = worldToClip;
-        clear_on_next_frame = false;
+    if (worldToClip != previousCamera || clearOnNextFrame) {
+        previousCamera = worldToClip;
+        clearOnNextFrame = false;
 
-        m_pathtrace_renderer->stop();
+        m_pathTraceRenderer->stop();
 
         if (m_img.getSize() != m_window.getSize()) {
             // Replace m_img with a new Image. TODO: Clean this up.
@@ -608,25 +608,25 @@ void App::renderFrame(GLContext* gl) {
             new (&m_img) Image(m_window.getSize(), ImageFormat::RGBA_Vec4f);  // placement new, will get autodestructed
         }
         // update current light source
-        (*m_areaLights)[m_light_index].setEmission(Vec3f(m_emission_red, m_emission_green, m_emission_blue));
-        (*m_areaLights)[m_light_index].setIntensity(m_light_intensity);
-        (*m_areaLights)[m_light_index].setSize(Vec2f(m_lightSize));
-        (*m_areaLights)[m_light_index].updatePower();
+        (*m_areaLights)[m_lightIndex].setEmission(Vec3f(m_emissionRed, m_emissionGreen, m_emissionBlue));
+        (*m_areaLights)[m_lightIndex].setIntensity(m_lightintensity);
+        (*m_areaLights)[m_lightIndex].setSize(Vec2f(m_lightSize));
+        (*m_areaLights)[m_lightIndex].updatePower();
 
         // update tracing settings
-        m_pathtrace_renderer->setNormalMapped(m_normalMapped);
-        m_pathtrace_renderer->setBilinearFiltering(m_bilinear);
-        m_pathtrace_renderer->setWhitted(m_whitted);
-        m_pathtrace_renderer->setAArays(m_numAARays);
-        m_pathtrace_renderer->setLightRays(m_numLightRays);
-        m_pathtrace_renderer->setFilterWidth(m_filter_width);
-        m_pathtrace_renderer->setAttenuation(m_saturation);
-        m_pathtrace_renderer->setDOF(m_depth_of_field);
-        m_pathtrace_renderer->setFocalDistance(m_focal_distance);
-        m_pathtrace_renderer->setAperture(m_aperture);
-        m_pathtrace_renderer->setAAmode(m_sobol_block);
-        m_pathtrace_renderer->setTermination(m_termination);
-        m_pathtrace_renderer->startPathTracingProcess(
+        m_pathTraceRenderer->setNormalMapped(m_normalMapped);
+        m_pathTraceRenderer->setBilinearFiltering(m_bilinear);
+        m_pathTraceRenderer->setWhitted(m_whitted);
+        m_pathTraceRenderer->setAArays(m_numAARays);
+        m_pathTraceRenderer->setLightRays(m_numLightRays);
+        m_pathTraceRenderer->setFilterWidth(m_filterWidth);
+        m_pathTraceRenderer->setAttenuation(m_saturation);
+        m_pathTraceRenderer->setDOF(m_depthOfField);
+        m_pathTraceRenderer->setFocalDistance(m_focalDistance);
+        m_pathTraceRenderer->setAperture(m_aperture);
+        m_pathTraceRenderer->setAAmode(m_sobolBlock);
+        m_pathTraceRenderer->setTermination(m_termination);
+        m_pathTraceRenderer->startPathTracingProcess(
             m_mesh.get(), m_areaLights.get(), m_rt.get(), &m_img, m_useRussianRoulette ? -m_numBounces : m_numBounces, m_cameraCtrl);
     }
 
@@ -635,9 +635,9 @@ void App::renderFrame(GLContext* gl) {
 
     if (m_RTMode) {
         // if we are computing radiosity, refresh mesh colors every 0.5 seconds
-        if (m_pathtrace_renderer->isRunning()) {
-            m_pathtrace_renderer->updatePicture(&m_img);
-            m_pathtrace_renderer->checkFinish();
+        if (m_pathTraceRenderer->isRunning()) {
+            m_pathTraceRenderer->updatePicture(&m_img);
+            m_pathTraceRenderer->checkFinish();
 
             // restart cycle
             m_updateClock.start();
@@ -747,7 +747,7 @@ const static F32 texAttrib[] = {0, 1, 1, 1, 0, 0, 1, 0};
 
 void App::loadMesh(const String& fileName) {
     m_clearVisualization = true;
-    m_pathtrace_renderer->stop();
+    m_pathTraceRenderer->stop();
     m_RTMode = false;
 
     // find the scene name: the file path without preceding folders and file extension
@@ -854,7 +854,7 @@ void App::constructTracer() {
 
         String hierarchyCacheFile = String("Hierarchy-") + md5;
 
-        if (m_use_sah) {
+        if (m_sah) {
             hierarchyCacheFile += String("-sah");
         }
 
@@ -874,7 +874,7 @@ void App::constructTracer() {
             QueryPerformanceFrequency(&frequency);
             QueryPerformanceCounter(&start);
 
-            m_rt->constructHierarchy(m_rtTriangles, m_use_sah);
+            m_rt->constructHierarchy(m_rtTriangles, m_sah);
 
             QueryPerformanceCounter(&stop);
 
@@ -891,7 +891,7 @@ void App::constructTracer() {
         QueryPerformanceFrequency(&frequency);
         QueryPerformanceCounter(&start);  // Start time stamp
 
-        m_rt->constructHierarchy(m_rtTriangles, m_use_sah);
+        m_rt->constructHierarchy(m_rtTriangles, m_sah);
 
         QueryPerformanceCounter(&stop);  // Stop time stamp
 
