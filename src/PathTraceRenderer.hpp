@@ -34,23 +34,23 @@ struct PathTracerContext {
     PathTracerContext();
     ~PathTracerContext();
 
-    std::vector<PathTracerBlock> m_blocks;  // Render blocks for rendering tasks. Index by .idx
-
-    AreaLight*            m_light;
-    const CameraControls* m_camera;
-    const MeshWithColors* m_scene;
-    Image*                m_destImage;
-    RayTracer*            m_rt;
+    // Render blocks for rendering tasks. Index by .idx
+    AreaLight*                   m_light;
+    const CameraControls*        m_camera;
+    const MeshWithColors*        m_scene;
+    Image*                       m_destImage;
+    RayTracer*                   m_rt;
+    std::unique_ptr<Image>       m_image;
+    std::vector<AreaLight>*      m_lights;
+    std::vector<PathTracerBlock> m_blocks;
 
     bool m_bForceExit;
     bool m_bResidual;
     int  m_bounces;
     int  m_pass;
 
-    std::unique_ptr<Image>  m_image;
-    std::vector<AreaLight>* m_lights;
-
-    std::chrono::steady_clock::time_point start;  // time keeping for stats
+    // time keeping for stats
+    std::chrono::steady_clock::time_point start;
 };
 
 class PathVisualizationLine {
@@ -101,42 +101,41 @@ public:
     static void getTextureParameters(const RaycastResult& hit, Vec3f& diffuse, Vec3f& n, Vec3f& specular);
     static int  getLightToSample(const Vec3f pos, const std::vector<AreaLight>* lights, Random& R);
 
-    void updatePicture(Image* display);  // normalize by 1/w
     void checkFinish(void);
-    void stop(void);
-    void setNormalMapped(bool b) { m_normalMapped = b; }
-    void setBilinearFiltering(bool b) { m_bilinearFiltering = b; }
-    void setWhitted(bool b) { m_whitted = b; }
-    void setDOF(bool b) { m_depthOfField = b; }
+    void resetRays() { m_TotalRays = 0; }
     void setAAmode(bool b) { m_sobolBlock = b; }
     void setAArays(int a) { m_NumAaRays = a; }
-    void setLightRays(int a) { m_numLightRays = a; }
-    void setFilterWidth(float a) { m_filterWidth = a; }
-    void setIntensity(float a) { m_intensity = a; }
-    void setAttenuation(float a) { m_attenuation = a; }
-    void setFocalDistance(float a) { m_focalDistance = a; }
     void setAperture(float a) { m_aperture = a; }
+    void setAttenuation(float a) { m_attenuation = a; }
+    void setBilinearFiltering(bool b) { m_bilinearFiltering = b; }
+    void setDOF(bool b) { m_depthOfField = b; }
+    void setFilterWidth(float a) { m_filterWidth = a; }
+    void setFocalDistance(float a) { m_focalDistance = a; }
+    void setIntensity(float a) { m_intensity = a; }
+    void setLightRays(int a) { m_numLightRays = a; }
+    void setNormalMapped(bool b) { m_normalMapped = b; }
     void setTermination(float a) { m_terminationProbability = a; }
-    void resetRays() { m_TotalRays = 0; }
+    void setWhitted(bool b) { m_whitted = b; }
+    void stop(void);
+    void updatePicture(Image* display);
 
 protected:
     MulticoreLauncher m_launcher;
-
-    float            m_raysPerSecond;
-    static bool      m_bilinearFiltering;
-    static bool      m_depthOfField;
-    static bool      m_normalMapped;
-    static bool      m_sobolBlock;
-    static bool      m_whitted;
-    static float     m_aperture;
-    static float     m_attenuation;
-    static float     m_filterWidth;
-    static float     m_focalDistance;
-    static float     m_intensity;
-    static float     m_terminationProbability;
-    static int       m_NumAaRays;
-    static int       m_numLightRays;
-    unsigned __int64 m_TotalRays;
+    float             m_raysPerSecond;
+    static bool       m_bilinearFiltering;
+    static bool       m_depthOfField;
+    static bool       m_normalMapped;
+    static bool       m_sobolBlock;
+    static bool       m_whitted;
+    static float      m_aperture;
+    static float      m_attenuation;
+    static float      m_filterWidth;
+    static float      m_focalDistance;
+    static float      m_intensity;
+    static float      m_terminationProbability;
+    static int        m_NumAaRays;
+    static int        m_numLightRays;
+    unsigned __int64  m_TotalRays;
 };
 
 }  // namespace FW

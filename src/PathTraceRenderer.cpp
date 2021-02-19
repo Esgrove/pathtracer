@@ -701,7 +701,8 @@ void PathTraceRenderer::pathTraceBlock(MulticoreLauncher::Task& t) {
     float a = 0.0f, b = 0.0f;
 
     if (m_sobolBlock) {
-        for (int i = 0; i < block.m_width * block.m_height * m_NumAaRays; i++) {
+        float scaleToAaRays = 1.0f / (float)m_NumAaRays;
+        for (int i = 0; i < block.m_width * block.m_height * m_NumAaRays; ++i) {
             if (ctx.m_bForceExit) {
                 return;
             }
@@ -725,7 +726,7 @@ void PathTraceRenderer::pathTraceBlock(MulticoreLauncher::Task& t) {
             int pixel_y = min((int)floor(py), height - 1);
 
             Vec4f prev = image->getVec4f(Vec2i(pixel_x, pixel_y));
-            prev += Vec4f(color, 1.0f) / (float)m_NumAaRays;
+            prev += Vec4f(color, 1.0f) * scaleToAaRays;
             image->setVec4f(Vec2i(pixel_x, pixel_y), prev);
         }
     } else {

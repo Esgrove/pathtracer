@@ -29,8 +29,8 @@ Vec2f getTexelCoords(Vec2f uv, const Vec2i size) {
     return Vec2f((uv.x - floor(uv.x)) * size.x, (uv.y - floor(uv.y)) * size.y);
 }
 
+/// form orthonormal basis matrix
 Mat3f formBasis(const Vec3f& n) {
-    // form orthonormal basis matrix
     Vec3f q = n;
 
     // replace the element with the smallest absolute value
@@ -110,7 +110,7 @@ void RayTracer::loadHierarchy(const char* filename, std::vector<RTTriangle>& tri
         read(infile, axis);
         nodes.push_back(flatNode(AABB(min, max), startIdx, endIdx, rightChild, leaf, axis));
     }
-    read(infile, (__int32)depth);
+    read(infile, depth);
 
     // create BVH
     bvh = BVH(m_triangles, list, nodes, depth);
@@ -151,7 +151,7 @@ void RayTracer::saveHierarchy(const char* filename, const std::vector<RTTriangle
     write(outfile, (__int32)bvh.nodes.size());
 
     // write each node
-    for (int i = 0; i < bvh.nodes.size(); ++i) {
+    for (auto i = 0; i < bvh.nodes.size(); ++i) {
         write(outfile, bvh.nodes[i].box.min);
         write(outfile, bvh.nodes[i].box.max);
         write(outfile, bvh.nodes[i].startIdx);
@@ -161,7 +161,7 @@ void RayTracer::saveHierarchy(const char* filename, const std::vector<RTTriangle
         write(outfile, bvh.nodes[i].axis);
     }
     // tree depth
-    write(outfile, (__int32)bvh.depth);
+    write(outfile, bvh.depth);
 }
 
 void RayTracer::constructHierarchy(std::vector<RTTriangle>& triangles, bool use_SAH) {
@@ -173,8 +173,6 @@ void RayTracer::constructHierarchy(std::vector<RTTriangle>& triangles, bool use_
 
 RaycastResult RayTracer::raycast(const Vec3f& orig, const Vec3f& dir, bool occlusion) const {
     // bool occlusion -> early exit when any hit will do (shadow rays and ambient occlusion)
-    RaycastResult castresult;
-
     float tmin = 1.0f, umin = 0.0f, vmin = 0.0f;
     int   imin = -1;
     bool  hit = false;
@@ -216,8 +214,9 @@ RaycastResult RayTracer::raycast(const Vec3f& orig, const Vec3f& dir, bool occlu
 
                                 Texture& alphaTex = (*m_triangles)[bvh.list[i]].m_material->textures[MeshBase::TextureType_Alpha];
                                 const Image& img = *alphaTex.getImage();
-                                Vec2i        texelCoords = getTexelCoords(uv, img.getSize());
-                                float        alpha = img.getVec4f(texelCoords).y;  // green = opacity
+
+                                Vec2i texelCoords = getTexelCoords(uv, img.getSize());
+                                float alpha = img.getVec4f(texelCoords).y;  // green = opacity
 
                                 if (alpha < 0.5f) {
                                     continue;
@@ -287,7 +286,7 @@ RaycastResult RayTracer::raycast(const Vec3f& orig, const Vec3f& dir, bool occlu
         return RaycastResult(&(*m_triangles)[imin], tmin, umin, vmin, orig + tmin * dir, orig, dir);
     }
 
-    return castresult;
+    return RaycastResult();
 }
 
 }  // namespace FW
