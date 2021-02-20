@@ -27,16 +27,16 @@ public:
     static FW::String computeMD5(const std::vector<Vec3f>& vertices);
 
     RaycastResult raycast(const Vec3f& orig, const Vec3f& dir, bool occlusion) const;
-    void          constructHierarchy(std::vector<RTTriangle>& triangles, bool m_sahEnabled);
-    void          loadHierarchy(const char* filename, std::vector<RTTriangle>& triangles);
-    void          saveHierarchy(const char* filename, const std::vector<RTTriangle>& triangles);
+    void constructHierarchy(std::vector<RTTriangle>& triangles, bool m_sahEnabled);
+    void loadHierarchy(const char* filename, std::vector<RTTriangle>& triangles);
+    void saveHierarchy(const char* filename, const std::vector<RTTriangle>& triangles);
 
-    int  getRayCount() { return m_rayCount; }
+    int getRayCount() { return m_rayCount; }
     void resetRayCounter() { m_rayCount = 0; }
 
     std::vector<RTTriangle>* m_triangles;
-    BVH                      bvh;
-    bool                     use_alpha = true;
+    BVH bvh;
+    bool use_alpha = true;
 
 private:
     mutable std::atomic<int> m_rayCount = 0;

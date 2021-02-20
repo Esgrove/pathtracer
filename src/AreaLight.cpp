@@ -70,8 +70,8 @@ void AreaLight::sample(float& pdf, Vec3f& p, int base, int dimension, Random& rn
     Vec3f bitangent = Vec4f(m_xform.getCol(1)).getXYZ();
 
     // Sobol
-    int   dim = 4 + 4 * dimension;  // dimensions 4 & 5
-    int   r = rnd.getS32(1, 10000);
+    int dim = 4 + 4 * dimension;  // dimensions 4 & 5
+    int r = rnd.getS32(1, 10000);
     float x = (2.0f * sobol::sample(base + r, dim) - 1.0f) * m_size.x;
     float y = (2.0f * sobol::sample(base + r, dim + 1) - 1.0f) * m_size.y;
 

@@ -27,7 +27,7 @@ static __forceinline void SUB(float dest[3], const float v1[3], const float v2[3
 }
 
 static __forceinline bool planeBoxOverlap(float normal[3], float d, const float maxbox[3]) {
-    int   q;
+    int q;
     float vmin[3], vmax[3];
     for (q = 0; q <= 2; q++) {
         if (normal[q] > 0.0f) {

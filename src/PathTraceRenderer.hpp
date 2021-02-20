@@ -35,19 +35,19 @@ struct PathTracerContext {
     ~PathTracerContext();
 
     // Render blocks for rendering tasks. Index by .idx
-    AreaLight*                   m_light;
-    const CameraControls*        m_camera;
-    const MeshWithColors*        m_scene;
-    Image*                       m_destImage;
-    RayTracer*                   m_rt;
-    std::unique_ptr<Image>       m_image;
-    std::vector<AreaLight>*      m_lights;
+    AreaLight* m_light;
+    const CameraControls* m_camera;
+    const MeshWithColors* m_scene;
+    Image* m_destImage;
+    RayTracer* m_rt;
+    std::unique_ptr<Image> m_image;
+    std::vector<AreaLight>* m_lights;
     std::vector<PathTracerBlock> m_blocks;
 
     bool m_bForceExit;
     bool m_bResidual;
-    int  m_bounces;
-    int  m_pass;
+    int m_bounces;
+    int m_pass;
 
     // time keeping for stats
     std::chrono::steady_clock::time_point start;
@@ -66,7 +66,7 @@ public:
 class PathVisualizationLabel {
 public:
     std::string text;
-    Vec3f       position;
+    Vec3f position;
 
     PathVisualizationLabel(std::string text, Vec3f position) : text(text), position(position) {}
 };
@@ -74,7 +74,7 @@ public:
 class PathVisualizationNode {
 public:
     std::vector<PathVisualizationLabel> labels;
-    std::vector<PathVisualizationLine>  lines;
+    std::vector<PathVisualizationLine> lines;
 };
 
 // This class contains functionality to render pictures using a ray tracer
@@ -84,7 +84,7 @@ public:
     ~PathTraceRenderer();
 
     // whether or not visualization data should be generated
-    static bool       debugVis;
+    static bool debugVis;
     PathTracerContext m_context;
 
     // are we still processing?
@@ -99,7 +99,7 @@ public:
 
     static void pathTraceBlock(MulticoreLauncher::Task& t);
     static void getTextureParameters(const RaycastResult& hit, Vec3f& diffuse, Vec3f& n, Vec3f& specular);
-    static int  getLightToSample(const Vec3f pos, const std::vector<AreaLight>* lights, Random& R);
+    static int getLightToSample(const Vec3f pos, const std::vector<AreaLight>* lights, Random& R);
 
     void checkFinish(void);
     void resetRays() { m_TotalRays = 0; }
@@ -121,21 +121,21 @@ public:
 
 protected:
     MulticoreLauncher m_launcher;
-    float             m_raysPerSecond;
-    static bool       m_bilinearFiltering;
-    static bool       m_depthOfField;
-    static bool       m_normalMapped;
-    static bool       m_sobolBlock;
-    static bool       m_whitted;
-    static float      m_aperture;
-    static float      m_attenuation;
-    static float      m_filterWidth;
-    static float      m_focalDistance;
-    static float      m_intensity;
-    static float      m_terminationProbability;
-    static int        m_NumAaRays;
-    static int        m_numLightRays;
-    unsigned __int64  m_TotalRays;
+    float m_raysPerSecond;
+    static bool m_bilinearFiltering;
+    static bool m_depthOfField;
+    static bool m_normalMapped;
+    static bool m_sobolBlock;
+    static bool m_whitted;
+    static float m_aperture;
+    static float m_attenuation;
+    static float m_filterWidth;
+    static float m_focalDistance;
+    static float m_intensity;
+    static float m_terminationProbability;
+    static int m_NumAaRays;
+    static int m_numLightRays;
+    unsigned __int64 m_TotalRays;
 };
 
 }  // namespace FW

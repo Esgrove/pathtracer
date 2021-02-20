@@ -251,8 +251,8 @@ bool App::handleEvent(const Window::Event& ev) {
 
     Action action = m_action;
     m_action = Action_None;
-    String    name;
-    Mat4f     mat;
+    String name;
+    Mat4f mat;
     AreaLight light;
 
     switch (action) {
@@ -761,7 +761,7 @@ void App::loadMesh(const String& fileName) {
     std::cout << "Scene name: " << m_results.scene_name << std::endl;
 
     m_window.showModalMessage(sprintf("Loading mesh from '%s'...", fileName.getPtr()));
-    String                    oldError = clearError();
+    String oldError = clearError();
     std::unique_ptr<MeshBase> mesh((MeshBase*)importMesh(fileName));
 
     String newError = getError();
@@ -925,7 +925,7 @@ void App::chopBehindPlane(MeshBase* mesh, const Vec4f& pleq) {
 
     for (int submeshIdx = 0; submeshIdx < mesh->numSubmeshes(); submeshIdx++) {
         Array<Vec3i>& inds = mesh->mutableIndices(submeshIdx);
-        int           triOut = 0;
+        int triOut = 0;
         for (int triIn = 0; triIn < inds.getSize(); triIn++) {
             if (dot(mesh->getVertexAttrib(inds[triIn].x, posAttrib), pleq) >= 0.0f
                 || dot(mesh->getVertexAttrib(inds[triIn].y, posAttrib), pleq) >= 0.0f

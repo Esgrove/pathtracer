@@ -12,20 +12,20 @@
 
 namespace FW {
 
-bool  PathTraceRenderer::debugVis = false;
-bool  PathTraceRenderer::m_bilinearFiltering = true;
-bool  PathTraceRenderer::m_depthOfField = false;
-bool  PathTraceRenderer::m_normalMapped = false;
-bool  PathTraceRenderer::m_sobolBlock = false;
-bool  PathTraceRenderer::m_whitted = false;
+bool PathTraceRenderer::debugVis = false;
+bool PathTraceRenderer::m_bilinearFiltering = true;
+bool PathTraceRenderer::m_depthOfField = false;
+bool PathTraceRenderer::m_normalMapped = false;
+bool PathTraceRenderer::m_sobolBlock = false;
+bool PathTraceRenderer::m_whitted = false;
 float PathTraceRenderer::m_aperture = 0.0f;
 float PathTraceRenderer::m_attenuation = 1.0f;
 float PathTraceRenderer::m_filterWidth = 1.0f;
 float PathTraceRenderer::m_focalDistance = 0.5f;
 float PathTraceRenderer::m_intensity = 1.0f;
 float PathTraceRenderer::m_terminationProbability = 0.2f;
-int   PathTraceRenderer::m_NumAaRays = 4;
-int   PathTraceRenderer::m_numLightRays = 32;
+int PathTraceRenderer::m_NumAaRays = 4;
+int PathTraceRenderer::m_numLightRays = 32;
 
 const float invPi = 0.31830988618379f;
 
@@ -82,7 +82,7 @@ void PathTraceRenderer::getTextureParameters(const RaycastResult& hit, Vec3f& di
     diffuse = mat->diffuse.getXYZ();
     if (mat->textures[MeshBase::TextureType_Diffuse].exists()) {
         const Texture& tex = mat->textures[MeshBase::TextureType_Diffuse];
-        const Image&   teximg = *tex.getImage();
+        const Image& teximg = *tex.getImage();
 
         if (m_bilinearFiltering) {
             // https://en.wikipedia.org/wiki/Bilinear_filtering
@@ -133,10 +133,10 @@ void PathTraceRenderer::getTextureParameters(const RaycastResult& hit, Vec3f& di
     // normal texture
     if (mat->textures[MeshBase::TextureType_Normal].exists() && m_normalMapped) {
         // tangent space normal from texture
-        Texture&     normalTex = mat->textures[MeshBase::TextureType_Normal];
+        Texture& normalTex = mat->textures[MeshBase::TextureType_Normal];
         const Image& img = *normalTex.getImage();
-        Vec2i        texelCoords = getTexelCoords(uv, img.getSize());
-        Vec3f        texture_normal = 2.0f * img.getVec4f(texelCoords).getXYZ() - 1.0f;
+        Vec2i texelCoords = getTexelCoords(uv, img.getSize());
+        Vec3f texture_normal = 2.0f * img.getVec4f(texelCoords).getXYZ() - 1.0f;
 
         // Vertices
         Vec3f v0 = hit.tri->m_vertices[0].p;
@@ -173,9 +173,9 @@ void PathTraceRenderer::getTextureParameters(const RaycastResult& hit, Vec3f& di
     // specular
     specular = mat->specular;
     if (mat->textures[MeshBase::TextureType_Specular].exists()) {
-        Texture&     specularTex = mat->textures[MeshBase::TextureType_Specular];
+        Texture& specularTex = mat->textures[MeshBase::TextureType_Specular];
         const Image& img = *specularTex.getImage();
-        Vec2i        texelCoords = getTexelCoords(uv, img.getSize());
+        Vec2i texelCoords = getTexelCoords(uv, img.getSize());
         specular = img.getVec4f(texelCoords).getXYZ();
     }
 }
@@ -235,9 +235,9 @@ PathTraceRenderer::~PathTraceRenderer() {
 // This function traces a single path and returns the resulting color value that will get rendered on the image
 Vec3f PathTraceRenderer::tracePath(float x, float y, PathTracerContext& ctx, int samplerBase, Random& R, std::vector<PathVisualizationNode>& visualization) {
     // const MeshWithColors* scene = ctx.m_scene;
-    RayTracer*              rt = ctx.m_rt;
-    Image*                  image = ctx.m_image.get();
-    const CameraControls&   cameraCtrl = *ctx.m_camera;
+    RayTracer* rt = ctx.m_rt;
+    Image* image = ctx.m_image.get();
+    const CameraControls& cameraCtrl = *ctx.m_camera;
     std::vector<AreaLight>* lights = ctx.m_lights;
 
     // get camera orientation and projection
@@ -549,9 +549,9 @@ Vec3f PathTraceRenderer::tracePath(float x, float y, PathTracerContext& ctx, int
 
 Vec3f PathTraceRenderer::traceWhitted(float x, float y, PathTracerContext& ctx, int samplerBase, Random& R, std::vector<PathVisualizationNode>& visualization) {
     // const MeshWithColors* scene = ctx.m_scene;
-    RayTracer*              rt = ctx.m_rt;
-    Image*                  image = ctx.m_image.get();
-    const CameraControls&   cameraCtrl = *ctx.m_camera;
+    RayTracer* rt = ctx.m_rt;
+    Image* image = ctx.m_image.get();
+    const CameraControls& cameraCtrl = *ctx.m_camera;
     std::vector<AreaLight>* lights = ctx.m_lights;
 
     // get camera orientation and projection
@@ -663,7 +663,7 @@ void PathTraceRenderer::pathTraceBlock(MulticoreLauncher::Task& t) {
 
     // const MeshWithColors* scene       = ctx.m_scene;
     // RayTracer* rt                     = ctx.m_rt;
-    Image*                image = ctx.m_image.get();
+    Image* image = ctx.m_image.get();
     const CameraControls& cameraCtrl = *ctx.m_camera;
     // std::vector<AreaLight>* lights    = ctx.m_lights;
 
@@ -684,7 +684,7 @@ void PathTraceRenderer::pathTraceBlock(MulticoreLauncher::Task& t) {
     std::vector<PathVisualizationNode> dummyVisualization;
 
     static std::atomic<uint32_t> seed = 0;
-    uint32_t                     current_seed = seed.fetch_add(1);
+    uint32_t current_seed = seed.fetch_add(1);
     Random R(t.idx + current_seed);  // this is bogus, just to make the random numbers change on each iteration
 
     // Sobol sequence base
@@ -788,12 +788,12 @@ void PathTraceRenderer::pathTraceBlock(MulticoreLauncher::Task& t) {
 }
 
 void PathTraceRenderer::startPathTracingProcess(
-    const MeshWithColors*   scene,
+    const MeshWithColors* scene,
     std::vector<AreaLight>* lights,
-    RayTracer*              rt,
-    Image*                  dest,
-    int                     bounces,
-    const CameraControls&   camera) {
+    RayTracer* rt,
+    Image* dest,
+    int bounces,
+    const CameraControls& camera) {
     FW_ASSERT(!m_context.m_bForceExit);
 
     m_context.m_bForceExit = false;
@@ -903,7 +903,7 @@ void PathTraceRenderer::checkFinish() {
 
         // after the completion of each full round through the image
         String fn = sprintf("pt-%03dppp.png", m_context.m_pass);
-        File   outfile(fn, File::Create);
+        File outfile(fn, File::Create);
         exportLodePngImage(outfile, m_context.m_destImage);
 
         if (!m_context.m_bForceExit) {

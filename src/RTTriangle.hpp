@@ -22,9 +22,9 @@ struct tri_data {
 };
 // The user pointer member can be used for identifying the triangle in the "parent" mesh representation.
 struct RTTriangle {
-    VertexPNTC          m_vertices[3];  // The vertices of the triangle.
-    MeshBase::Material* m_material;     // Material of the triangle
-    tri_data            m_data;  // Holds the matrix and vector necessary for Woop intersection and vertex index in the mesh
+    VertexPNTC m_vertices[3];        // The vertices of the triangle.
+    MeshBase::Material* m_material;  // Material of the triangle
+    tri_data m_data;  // Holds the matrix and vector necessary for Woop intersection and vertex index in the mesh
 
     RTTriangle(const VertexPNTC v0, const VertexPNTC v1, const VertexPNTC v2) {
         m_vertices[0] = v0;

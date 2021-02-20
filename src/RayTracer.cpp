@@ -98,8 +98,8 @@ void RayTracer::loadHierarchy(const char* filename, std::vector<RTTriangle>& tri
     nodes.reserve(bvhNodesSize);
 
     __int32 startIdx, endIdx, rightChild, axis, depth;
-    bool    leaf;
-    Vec3f   min, max;
+    bool leaf;
+    Vec3f min, max;
     for (auto i = 0; i < bvhNodesSize; ++i) {
         read(infile, min);
         read(infile, max);
@@ -174,12 +174,12 @@ void RayTracer::constructHierarchy(std::vector<RTTriangle>& triangles, bool use_
 RaycastResult RayTracer::raycast(const Vec3f& orig, const Vec3f& dir, bool occlusion) const {
     // bool occlusion -> early exit when any hit will do (shadow rays and ambient occlusion)
     float tmin = 1.0f, umin = 0.0f, vmin = 0.0f;
-    int   imin = -1;
-    bool  hit = false;
+    int imin = -1;
+    bool hit = false;
 
     // precompute values for ray-box intersection
     Vec3f inv_dir = Vec3f(1.0f / dir.x, 1.0f / dir.y, 1.0f / dir.z);
-    int   sign[3] = {inv_dir.x < 0.0f, inv_dir.y < 0.0f, inv_dir.z < 0.0f};
+    int sign[3] = {inv_dir.x < 0.0f, inv_dir.y < 0.0f, inv_dir.z < 0.0f};
 
     // stack-based BVH traversal (adapted from the PBRT book):
     // currentNodeIndex holds the offset (index) of the node to be visited. It starts with a value of 0, representing the

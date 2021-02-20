@@ -3,7 +3,7 @@ BasedOnStyle: WebKit
 AccessModifierOffset: '-4'
 AlignAfterOpenBracket: AlwaysBreak
 AlignConsecutiveAssignments: 'false'
-AlignConsecutiveDeclarations: 'true'
+AlignConsecutiveDeclarations: 'false'
 AlignEscapedNewlines: DontAlign
 AlignOperands: 'false'
 AlignTrailingComments: 'true'

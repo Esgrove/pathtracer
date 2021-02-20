@@ -27,7 +27,7 @@ public:
 
 private:
     std::ostream& os;
-    Statusbar&    sbar;
+    Statusbar& sbar;
 };
 
 class Loader : noncopyable {
@@ -41,5 +41,5 @@ public:
 
 private:
     std::istream& is;
-    Statusbar&    sbar;
+    Statusbar& sbar;
 };
