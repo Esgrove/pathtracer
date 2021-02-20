@@ -312,7 +312,8 @@ Vec3f PathTraceRenderer::tracePath(float x, float y, PathTracerContext& ctx, int
 
         float normalization = (gloss + 2.0f) / (4.0f * FW_PI * (2.0f - pow(2.0f, -gloss / 2.0f)));
 
-        int bounce = 0, bounces = abs(ctx.m_bounces);  // always do #m_bounces bounces
+        int bounce = 0;
+        int bounces = abs(ctx.m_bounces);  // always do #m_bounces bounces
 
         Vec3f throughput(1, 1, 1), color(0.0f);
 
@@ -450,8 +451,9 @@ Vec3f PathTraceRenderer::tracePath(float x, float y, PathTracerContext& ctx, int
             bounce += 1;
 
             if (debugVis) {
+                // show debug path in yellow for indirect
                 PathVisualizationNode node;
-                node.lines.push_back(PathVisualizationLine(result.orig, result.point, Vec3f(1.0f, 1.0f, 0.0f)));  // yellow indirect
+                node.lines.push_back(PathVisualizationLine(result.orig, result.point, Vec3f(1.0f, 1.0f, 0.0f)));
                 node.lines.push_back(
                     PathVisualizationLine(result.point, result.point + result.tri->normal() * .1f, Vec3f(1.0f, 0.0f, 0.0f)));
                 node.labels.push_back(PathVisualizationLabel("bounce " + std::to_string(bounce), result.point));
@@ -534,8 +536,9 @@ Vec3f PathTraceRenderer::tracePath(float x, float y, PathTracerContext& ctx, int
                 bounce += 1;
 
                 if (debugVis) {
+                    // show roulette bounces in green
                     PathVisualizationNode node;
-                    node.lines.push_back(PathVisualizationLine(result.orig, result.point, Vec3f(0.0f, 1.0f, 0.0f)));  // green roulette bounces
+                    node.lines.push_back(PathVisualizationLine(result.orig, result.point, Vec3f(0.0f, 1.0f, 0.0f)));
                     node.lines.push_back(
                         PathVisualizationLine(result.point, result.point + result.tri->normal() * .1f, Vec3f(1, 0, 0)));
                     node.labels.push_back(PathVisualizationLabel("roulette" + std::to_string(bounce), result.point));
@@ -606,7 +609,6 @@ Vec3f PathTraceRenderer::traceWhitted(float x, float y, PathTracerContext& ctx, 
     RaycastResult result = rt->raycast(Ro, Rd, false);
 
     // if we hit something, fetch a color and insert into image
-
     Vec3f color(0.0f);
 
     if (result.tri != nullptr) {
@@ -683,9 +685,10 @@ void PathTraceRenderer::pathTraceBlock(MulticoreLauncher::Task& t) {
     // Not used but must be passed to tracePath
     std::vector<PathVisualizationNode> dummyVisualization;
 
+    // this is bogus, just to make the random numbers change on each iteration
     static std::atomic<uint32_t> seed = 0;
     uint32_t current_seed = seed.fetch_add(1);
-    Random R(t.idx + current_seed);  // this is bogus, just to make the random numbers change on each iteration
+    Random R(t.idx + current_seed);
 
     // Sobol sequence base
     int base = t.idx * R.getS32(1, 9) + R.getS32(1, 12345);
@@ -713,7 +716,6 @@ void PathTraceRenderer::pathTraceBlock(MulticoreLauncher::Task& t) {
             float x = px * div_x * 2.0f - 1.0f;
             float y = py * div_y * -2.0f + 1.0f;
 
-            // trace!
             Vec3f color;
             if (m_whitted) {
                 color = traceWhitted(x, y, ctx, base + i, R, dummyVisualization);
@@ -779,7 +781,7 @@ void PathTraceRenderer::pathTraceBlock(MulticoreLauncher::Task& t) {
 
             color_AA = saturate(color_AA, m_attenuation);
 
-            // Put pixel.
+            // put pixel to image
             Vec4f prev = image->getVec4f(Vec2i(pixel_x, pixel_y));
             prev += color_AA;
             image->setVec4f(Vec2i(pixel_x, pixel_y), prev);
@@ -805,11 +807,10 @@ void PathTraceRenderer::startPathTracingProcess(
     m_context.m_pass = 0;
     m_context.m_bounces = bounces;
     m_context.m_image.reset(new Image(dest->getSize(), ImageFormat::RGBA_Vec4f));
-
     m_context.m_destImage = dest;
     m_context.m_image->clear();
 
-    // Add rendering blocks.
+    // add rendering blocks
     m_context.m_blocks.clear();
     {
         int block_size = 32;
@@ -841,12 +842,10 @@ void PathTraceRenderer::startPathTracingProcess(
 
     dest->clear();
 
-    // Fire away!
-
     m_context.start = std::chrono::steady_clock::now();
 
-    // If you change this, change the one in checkFinish too.
     m_launcher.setNumThreads(m_launcher.getNumCores());
+    // DEBUG: Enable this for debugging theading issues
     // m_launcher.setNumThreads(1);
 
     m_launcher.popAll();
@@ -860,9 +859,9 @@ void PathTraceRenderer::updatePicture(Image* dest) {
     for (int i = 0; i < dest->getSize().y; ++i) {
         for (int j = 0; j < dest->getSize().x; ++j) {
             Vec4f D = m_context.m_image->getVec4f(Vec2i(j, i));
-            if (D.w != 0.0f)
+            if (D.w != 0.0f) {
                 D = D * (1.0f / D.w);
-
+            }
             // Gamma correction.
             Vec4f color = Vec4f(FW::pow(D.x, 1.0f / 2.2f), FW::pow(D.y, 1.0f / 2.2f), FW::pow(D.z, 1.0f / 2.2f), D.w);
 
@@ -882,15 +881,11 @@ void PathTraceRenderer::checkFinish() {
 
         ++m_context.m_pass;
 
-        float time
-            = 0.001f
-            * static_cast<float>(
-                  std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - m_context.start).count());
+        float time = static_cast<float>(std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - m_context.start).count()) * 0.001f;
 
         // calculate average rays per second
         m_TotalRays += m_context.m_rt->getRayCount();
         m_raysPerSecond = m_TotalRays / time;
-
         m_context.m_rt->resetRayCounter();
 
         // print stats

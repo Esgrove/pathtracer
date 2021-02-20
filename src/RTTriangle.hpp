@@ -15,7 +15,6 @@ struct tri_data {
         M.setCol(0, v1 - v0);
         M.setCol(1, v2 - v0);
         M.setCol(2, normal);
-
         M.invert();
         N = -M * v0;
     }

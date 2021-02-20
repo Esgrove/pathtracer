@@ -94,7 +94,7 @@ void RayTracer::loadHierarchy(const char* filename, std::vector<RTTriangle>& tri
     read(infile, bvhNodesSize);
 
     // nodes
-    std::vector<flatNode> nodes;
+    std::vector<FlatNode> nodes;
     nodes.reserve(bvhNodesSize);
 
     __int32 startIdx, endIdx, rightChild, axis, depth;
@@ -108,7 +108,7 @@ void RayTracer::loadHierarchy(const char* filename, std::vector<RTTriangle>& tri
         read(infile, rightChild);
         read(infile, leaf);
         read(infile, axis);
-        nodes.push_back(flatNode(AABB(min, max), startIdx, endIdx, rightChild, leaf, axis));
+        nodes.push_back(FlatNode(AABB(min, max), startIdx, endIdx, rightChild, leaf, axis));
     }
     read(infile, depth);
 
@@ -191,7 +191,7 @@ RaycastResult RayTracer::raycast(const Vec3f& orig, const Vec3f& dir, bool occlu
 
     ++m_rayCount;
     while (true) {
-        flatNode node = bvh.nodes[currentNodeIndex];
+        FlatNode node = bvh.nodes[currentNodeIndex];
 
         // Check ray against node bounding box
         if (node.intersect(orig, inv_dir, sign, tmin)) {

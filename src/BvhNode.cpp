@@ -6,7 +6,7 @@
 
 namespace FW {
 
-bool flatNode::intersect(const FW::Vec3f& orig, const FW::Vec3f& invDir, const int sign[3], const float& t1) const {
+bool FlatNode::intersect(const FW::Vec3f& orig, const FW::Vec3f& invDir, const int sign[3], const float& t1) const {
     /*
     Williams, Amy, et al.
     "An Efficient and Robust Ray-Box Intersection Algorithm."

@@ -48,6 +48,7 @@ void AreaLight::draw(const Mat4f& worldToCamera, const Mat4f& projection, bool w
         }
         glDisable(GL_BLEND);
     } else {
+        // plot square in light color
         Mat4f S = Mat4f::scale(Vec3f(m_size, 1));
         Mat4f M = worldToCamera * m_xform * S;
         glLoadMatrixf((float*)&M);

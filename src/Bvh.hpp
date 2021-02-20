@@ -6,16 +6,13 @@
 
 #include <vector>
 
-// https://en.wikipedia.org/wiki/Bounding_volume_hierarchy
-
 namespace FW {
 
-class BVH {
+class BVH {  // https://en.wikipedia.org/wiki/Bounding_volume_hierarchy
 public:
-    // constructor
     BVH() {};
     BVH(std::vector<RTTriangle>* triangles, bool sah);
-    BVH(std::vector<RTTriangle>* triangles, std::vector<__int32> list, std::vector<flatNode> nodes, int depth)
+    BVH(std::vector<RTTriangle>* triangles, std::vector<__int32> list, std::vector<FlatNode> nodes, int depth)
         : m_triangles(triangles)
         , list(list)
         , nodes(nodes)
@@ -40,7 +37,7 @@ public:
     std::vector<__int32> list;
 
     // list of nodes
-    std::vector<flatNode> nodes;
+    std::vector<FlatNode> nodes;
 
     // tree depth
     __int32 depth = 0;

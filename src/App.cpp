@@ -262,21 +262,24 @@ bool App::handleEvent(const Window::Event& ev) {
         case Action_LoadMesh:
             name = m_window.showFileLoadDialog("Load mesh or state", getMeshImportFilter() + ",dat:State file");
             if (name.getLength())
-                if (name.endsWith(".dat"))
+                if (name.endsWith(".dat")) {
                     m_commonCtrl.loadState(name);
-                else
+                } else {
                     loadMesh(name);
+                }
             break;
 
         case Action_ReloadMesh:
-            if (m_meshFileName.getLength())
+            if (m_meshFileName.getLength()) {
                 loadMesh(m_meshFileName);
+            }
             break;
 
         case Action_SaveMesh:
             name = m_window.showFileSaveDialog("Save mesh", getMeshExportFilter());
-            if (name.getLength())
+            if (name.getLength()) {
                 saveMesh(name);
+            }
             break;
 
         case Action_ResetCamera:
@@ -298,10 +301,12 @@ bool App::handleEvent(const Window::Event& ev) {
             printf("\nEnter camera signature:\n");
 
             char buf[1024];
-            if (scanf_s("%s", buf, FW_ARRAY_SIZE(buf)))
+            if (scanf_s("%s", buf, FW_ARRAY_SIZE(buf))) {
                 m_cameraCtrl.decodeSignature(buf);
-            else
+            }
+            else {
                 setError("Signature too long!");
+            }
 
             if (!hasError())
                 printf("Done.\n\n");
@@ -345,49 +350,58 @@ bool App::handleEvent(const Window::Event& ev) {
             break;
 
         case Action_NormalizeNormals:
-            if (m_mesh)
+            if (m_mesh) {
                 m_mesh->xformNormals(mat.getXYZ(), true);
+            }
             break;
 
         case Action_FlipNormals:
             mat = -mat;
-            if (m_mesh)
+            if (m_mesh) {
                 m_mesh->xformNormals(mat.getXYZ(), false);
+            }
             break;
 
         case Action_RecomputeNormals:
-            if (m_mesh)
+            if (m_mesh) {
                 m_mesh->recomputeNormals();
+            }
             break;
 
         case Action_FlipTriangles:
-            if (m_mesh)
+            if (m_mesh) {
                 m_mesh->flipTriangles();
+            }
             break;
 
         case Action_CleanMesh:
-            if (m_mesh)
+            if (m_mesh) {
                 m_mesh->clean();
+            }
             break;
 
         case Action_CollapseVertices:
-            if (m_mesh)
+            if (m_mesh) {
                 m_mesh->collapseVertices();
+            }
             break;
 
         case Action_DupVertsPerSubmesh:
-            if (m_mesh)
+            if (m_mesh) {
                 m_mesh->dupVertsPerSubmesh();
+            }
             break;
 
         case Action_FixMaterialColors:
-            if (m_mesh)
+            if (m_mesh) {
                 m_mesh->fixMaterialColors();
+            }
             break;
 
         case Action_DownscaleTextures:
-            if (m_mesh)
+            if (m_mesh) {
                 downscaleTextures(m_mesh.get());
+            }
             break;
 
         case Action_ChopBehindNear:
@@ -399,7 +413,6 @@ bool App::handleEvent(const Window::Event& ev) {
             break;
 
         case Action_PlaceLightSourceAtCamera:
-
             (*m_areaLights)[m_lightIndex].setOrientation(m_cameraCtrl.getCameraToWorld().getXYZ());
             (*m_areaLights)[m_lightIndex].setPosition(m_cameraCtrl.getPosition());
 
@@ -407,7 +420,6 @@ bool App::handleEvent(const Window::Event& ev) {
             break;
 
         case Action_AddLight:
-
             m_pathTraceRenderer->stop();
             m_RTMode = false;
 
@@ -424,7 +436,6 @@ bool App::handleEvent(const Window::Event& ev) {
             break;
 
         case Action_ChangeLight:
-
             m_pathTraceRenderer->stop();
             m_RTMode = false;
 
@@ -570,8 +581,6 @@ void App::readState(StateDump& d) {
     }
 }
 
-//------------------------------------------------------------------------
-
 void App::writeState(StateDump& d) const {
     d.pushOwner("App");
     d.set(m_meshFileName, "m_meshFileName");
@@ -679,15 +688,17 @@ void App::renderFrame(GLContext* gl) {
         l.draw(worldToCamera, projection, m_whitted);
     }
 
-    if (m_clearVisualization)
+    if (m_clearVisualization) {
         m_visualization.clear();
+    }
     m_clearVisualization = false;
     if (m_visualization.size() > 0) {
         glPushAttrib(GL_ALL_ATTRIB_BITS);
 
         glDepthMask(false);  // Disables depth write but not read
 
-        glMatrixMode(GL_MODELVIEW);  // Set the projection and camera matrices
+        // Set the projection and camera matrices
+        glMatrixMode(GL_MODELVIEW);
         glLoadMatrixf(worldToCamera.getPtr());
         glMatrixMode(GL_PROJECTION);
         glLoadMatrixf(projection.getPtr());
@@ -700,17 +711,17 @@ void App::renderFrame(GLContext* gl) {
         int m_visualizationStepSize = 100;
         for (int i = 0; i < (int)m_visualization.size(); ++i) {
             auto& node = m_visualization[i];
-            if (m_playbackVisualization && (m_currentVisualizationIndex < i || m_currentVisualizationIndex > i + m_visualizationStepSize))  // Only render one node if playback enabled
+            // Only render one node if playback enabled
+            if (m_playbackVisualization && (m_currentVisualizationIndex < i || m_currentVisualizationIndex > i + m_visualizationStepSize)) {
                 continue;
+            }
 
             glBegin(GL_LINES);
-
             for (auto& line : node.lines) {
                 glColor4f(line.color.x, line.color.y, line.color.z, alpha);
                 glVertex3f(line.start.x, line.start.y, line.start.z);
                 glVertex3f(line.stop.x, line.stop.y, line.stop.z);
             }
-
             glEnd();
         }
         m_currentVisualizationIndex = (m_currentVisualizationIndex + 1) % m_visualization.size();
@@ -719,8 +730,9 @@ void App::renderFrame(GLContext* gl) {
             for (auto& node : m_visualization)
                 for (auto& label : node.labels) {
                     Vec4f posNDC = worldToClip * Vec4f(label.position, 1.0f);
-                    if (posNDC.z < .0f)
+                    if (posNDC.z < .0f) {
                         continue;
+                    }
                     Vec2f pixelpos = posNDC.getXY() / posNDC.w;
                     gl->drawLabel(label.text.c_str(), pixelpos, 0xffffffff);
                 }
@@ -734,11 +746,10 @@ void App::renderFrame(GLContext* gl) {
 }
 
 void App::renderScene(GLContext* gl, const Mat4f& worldToCamera, const Mat4f& projection) {
-    if (m_mesh)
+    if (m_mesh) {
         m_mesh->draw(gl, worldToCamera, projection);
+    }
 }
-
-const static F32 texAttrib[] = {0, 1, 1, 1, 0, 0, 1, 0};
 
 void App::loadMesh(const String& fileName) {
     m_clearVisualization = true;
@@ -772,8 +783,9 @@ void App::loadMesh(const String& fileName) {
     m_mesh.reset(new MeshWithColors(*mesh));
 
     // fix input colors to white so we see something
-    for (S32 i = 0; i < m_mesh->numVertices(); ++i)
+    for (S32 i = 0; i < m_mesh->numVertices(); ++i) {
         m_mesh->mutableVertex(i).c = Vec3f(1, 1, 1);
+    }
 
     m_commonCtrl.message(sprintf("Loaded mesh from '%s'", fileName.getPtr()));
 
@@ -826,11 +838,11 @@ void App::constructTracer() {
     }
 
     // compute checksum
-
     m_rtVertexPositions.clear();
     m_rtVertexPositions.reserve(m_mesh->numVertices());
-    for (int i = 0; i < m_mesh->numVertices(); ++i)
+    for (int i = 0; i < m_mesh->numVertices(); ++i) {
         m_rtVertexPositions.push_back(m_mesh->vertex(i).p);
+    }
 
     String md5 = RayTracer::computeMD5(m_rtVertexPositions);
     FW::printf("Mesh MD5: %s\n", md5.getPtr());
@@ -841,14 +853,13 @@ void App::constructTracer() {
     bool tryLoadHierarchy = true;
 
     // always construct when measuring performance
-    if (m_settings.batch_render)
+    if (m_settings.batch_render) {
         tryLoadHierarchy = false;
+    }
 
     if (tryLoadHierarchy) {
         // check if saved hierarchy exists
-
         String hierarchyCacheFile = String("Hierarchy-") + md5;
-
         if (m_sah) {
             hierarchyCacheFile += String("-sah");
         }
@@ -880,17 +891,18 @@ void App::constructTracer() {
             ::printf("Saved hierarchy to %s\n", hierarchyCacheFile.getPtr());
         }
     } else {
-        // nope, bite the bullet and construct it
+        // nope, construct it
 
         LARGE_INTEGER start, stop, frequency;
         QueryPerformanceFrequency(&frequency);
-        QueryPerformanceCounter(&start);  // Start time stamp
+        QueryPerformanceCounter(&start);
 
         m_rt->constructHierarchy(m_rtTriangles, m_sah);
 
-        QueryPerformanceCounter(&stop);  // Stop time stamp
+        QueryPerformanceCounter(&stop);
 
-        m_results.build_time = (int)((stop.QuadPart - start.QuadPart) * 1000.0 / frequency.QuadPart);  // Get timer result in milliseconds
+        // Get timer result in milliseconds
+        m_results.build_time = (int)((stop.QuadPart - start.QuadPart) * 1000.0 / frequency.QuadPart);
         std::cout << "Build time: " << m_results.build_time << " ms" << std::endl;
     }
 }
@@ -915,8 +927,9 @@ void App::downscaleTextures(MeshBase* mesh) {
 void App::chopBehindPlane(MeshBase* mesh, const Vec4f& pleq) {
     FW_ASSERT(mesh);
     int posAttrib = mesh->findAttrib(MeshBase::AttribType_Position);
-    if (posAttrib == -1)
+    if (posAttrib == -1) {
         return;
+    }
 
     for (int submeshIdx = 0; submeshIdx < mesh->numSubmeshes(); submeshIdx++) {
         Array<Vec3i>& inds = mesh->mutableIndices(submeshIdx);

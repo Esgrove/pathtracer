@@ -64,9 +64,8 @@ struct Node {
 };
 
 // Treenode for depth-first ordered list
-struct flatNode {
-    // constructor
-    flatNode(FW::AABB box, __int32 start, __int32 end, bool leaf, __int32 axis)
+struct FlatNode {
+    FlatNode(FW::AABB box, __int32 start, __int32 end, bool leaf, __int32 axis)
         : box(box)
         , startIdx(start)
         , endIdx(end)
@@ -74,7 +73,7 @@ struct flatNode {
         , axis(axis)
         , triangles(end - start + 1) {};
 
-    flatNode(FW::AABB box, __int32 start, __int32 end, __int32 right, bool leaf, __int32 axis)
+    FlatNode(FW::AABB box, __int32 start, __int32 end, __int32 right, bool leaf, __int32 axis)
         : box(box)
         , startIdx(start)
         , endIdx(end)

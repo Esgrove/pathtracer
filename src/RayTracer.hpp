@@ -39,6 +39,7 @@ public:
     bool useAlpha = true;
 
 private:
+    // total rays traced
     mutable std::atomic<int> m_rayCount = 0;
 };
 

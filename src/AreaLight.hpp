@@ -10,8 +10,7 @@ namespace FW {
 
 class GLContext;
 
-// a simple square-shaped area light source
-
+/// A simple square-shaped area light source
 class AreaLight {
 public:
     AreaLight() : m_E(100.0f, 100.0f, 100.0f), m_size(0.25f, 0.25f) {
