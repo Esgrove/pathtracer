@@ -66,7 +66,7 @@ private:
     enum bvh_build_method { None, SAH };
     enum SamplingType { AO_sampling, AA_sampling };
     // this structure holds the necessary arguments when rendering using command line parameters
-    struct m_settings {
+    struct {
         bool batch_render;
         bool enable_reflections;   // whether to compute reflections in whitted integrator
         bool output_images;        // might be useful to compare images with the example
@@ -76,14 +76,14 @@ private:
         float ao_length;           // ambient occlusion
         int spp;                   // samples per pixel to use
         SamplingType sample_type;  // AO or AA sampling; AO includes one extra sample for the primary ray
-    };
+    } m_settings;
 
-    struct m_results {
+    struct {
         std::string state_name;
         std::string scene_name;
         int rayCount;
         int build_time, trace_time;
-    };
+    } m_results;
 
 public:
     App(std::vector<std::string>& cmd_args);
@@ -119,7 +119,7 @@ private:
     CameraControls m_cameraCtrl;
     CommonControls m_commonCtrl;
     CullMode m_cullMode;
-    Image m_img;
+    std::unique_ptr <Image> m_img;
     String m_meshFileName;
     Timer m_updateClock;
     Window m_window;

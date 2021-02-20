@@ -52,8 +52,8 @@ App::App(std::vector<std::string>& cmd_args)
     , m_emissionGreen(100.0f)
     , m_emissionBlue(100.0f)
     , m_lightIndex(0)
-    , m_img(Vec2i(10, 10), ImageFormat::RGBA_Vec4f)  // will get resized immediately
 {
+    m_img = std::make_unique<Image>(Vec2i(10, 10), ImageFormat::RGBA_Vec4f);
     m_commonCtrl.showFPS(false);
     m_commonCtrl.addStateObject(this);
     m_cameraCtrl.setKeepAligned(true);
@@ -447,10 +447,9 @@ bool App::handleEvent(const Window::Event& ev) {
             m_RTMode = !m_RTMode;
             if (m_RTMode) {
                 m_pathTraceRenderer->stop();
-                if (m_img.getSize() != m_window.getSize()) {
-                    // Replace m_img with a new Image. TODO: Clean this up.
-                    m_img.~Image();
-                    new (&m_img) Image(m_window.getSize(), ImageFormat::RGBA_Vec4f);  // placement new, will get autodestructed
+                if (m_img->getSize() != m_window.getSize()) {
+                    // Replace m_img with a new Image
+                    m_img = std::make_unique<Image>(m_window.getSize(), ImageFormat::RGBA_Vec4f);
                 }
                 m_rt->resetRayCounter();
 
@@ -469,7 +468,7 @@ bool App::handleEvent(const Window::Event& ev) {
                 m_pathTraceRenderer->setAAmode(m_sobolBlock);
                 m_pathTraceRenderer->setTermination(m_termination);
                 m_pathTraceRenderer->startPathTracingProcess(
-                    m_mesh.get(), m_areaLights.get(), m_rt.get(), &m_img, m_useRussianRoulette ? -m_numBounces : m_numBounces, m_cameraCtrl);
+                    m_mesh.get(), m_areaLights.get(), m_rt.get(), m_img.get(), m_useRussianRoulette ? -m_numBounces : m_numBounces, m_cameraCtrl);
                 ::printf("\nRendering started:\n");
                 ::printf("Pass 0\n");
             } else {
@@ -602,10 +601,9 @@ void App::renderFrame(GLContext* gl) {
 
         m_pathTraceRenderer->stop();
 
-        if (m_img.getSize() != m_window.getSize()) {
-            // Replace m_img with a new Image. TODO: Clean this up.
-            m_img.~Image();
-            new (&m_img) Image(m_window.getSize(), ImageFormat::RGBA_Vec4f);  // placement new, will get autodestructed
+        if (m_img->getSize() != m_window.getSize()) {
+            // replace m_img with a new Image
+            m_img = std::make_unique<Image>(m_window.getSize(), ImageFormat::RGBA_Vec4f);
         }
         // update current light source
         (*m_areaLights)[m_lightIndex].setEmission(Vec3f(m_emissionRed, m_emissionGreen, m_emissionBlue));
@@ -627,7 +625,7 @@ void App::renderFrame(GLContext* gl) {
         m_pathTraceRenderer->setAAmode(m_sobolBlock);
         m_pathTraceRenderer->setTermination(m_termination);
         m_pathTraceRenderer->startPathTracingProcess(
-            m_mesh.get(), m_areaLights.get(), m_rt.get(), &m_img, m_useRussianRoulette ? -m_numBounces : m_numBounces, m_cameraCtrl);
+            m_mesh.get(), m_areaLights.get(), m_rt.get(), m_img.get(), m_useRussianRoulette ? -m_numBounces : m_numBounces, m_cameraCtrl);
     }
 
     glClearColor(0.2f, 0.4f, 0.8f, 1.0f);
@@ -636,24 +634,23 @@ void App::renderFrame(GLContext* gl) {
     if (m_RTMode) {
         // if we are computing radiosity, refresh mesh colors every 0.5 seconds
         if (m_pathTraceRenderer->isRunning()) {
-            m_pathTraceRenderer->updatePicture(&m_img);
+            m_pathTraceRenderer->updatePicture(m_img.get());
             m_pathTraceRenderer->checkFinish();
 
             // restart cycle
             m_updateClock.start();
         }
 
-        gl->drawImage(m_img, Vec2f(0));
+        gl->drawImage(*m_img, Vec2f(0));
 
         return;
     }
 
-    // Initialize GL state.
-
+    // initialize GL state
     glEnable(GL_DEPTH_TEST);
-
-    if (m_cullMode == CullMode_None)
+    if (m_cullMode == CullMode_None) {
         glDisable(GL_CULL_FACE);
+    }
     else {
         glEnable(GL_CULL_FACE);
         glCullFace(GL_BACK);
@@ -661,14 +658,12 @@ void App::renderFrame(GLContext* gl) {
     }
 
     // No mesh => skip
-
     if (!m_mesh) {
         gl->drawModalMessage("No mesh loaded!");
         return;
     }
 
     // Render
-
     if (!gl->getConfig().isStereo)
         renderScene(gl, worldToCamera, projection);
     else {
