@@ -36,7 +36,7 @@ public:
 
     std::vector<RTTriangle>* m_triangles;
     BVH bvh;
-    bool use_alpha = true;
+    bool useAlpha = true;
 
 private:
     mutable std::atomic<int> m_rayCount = 0;

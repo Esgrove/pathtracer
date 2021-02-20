@@ -97,9 +97,9 @@ public:
     static Vec3f tracePath(float x, float y, PathTracerContext& ctx, int samplerBase, Random& rnd, std::vector<PathVisualizationNode>& visualization);
     static Vec3f traceWhitted(float x, float y, PathTracerContext& ctx, int samplerBase, Random& rnd, std::vector<PathVisualizationNode>& visualization);
 
-    static void pathTraceBlock(MulticoreLauncher::Task& t);
-    static void getTextureParameters(const RaycastResult& hit, Vec3f& diffuse, Vec3f& n, Vec3f& specular);
     static int getLightToSample(const Vec3f pos, const std::vector<AreaLight>* lights, Random& R);
+    static void getTextureParameters(const RaycastResult& hit, Vec3f& diffuse, Vec3f& n, Vec3f& specular);
+    static void pathTraceBlock(MulticoreLauncher::Task& t);
 
     void checkFinish(void);
     void resetRays() { m_TotalRays = 0; }

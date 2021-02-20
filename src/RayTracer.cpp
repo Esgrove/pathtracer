@@ -201,7 +201,7 @@ RaycastResult RayTracer::raycast(const Vec3f& orig, const Vec3f& dir, bool occlu
                 for (auto i = node.startIdx; i <= node.endIdx; ++i) {
                     float t, u, v;
                     if ((*m_triangles)[bvh.list[i]].intersect_woop(orig, dir, t, u, v)) {
-                        if (use_alpha) {
+                        if (useAlpha) {
                             // test alpha texture
                             if ((*m_triangles)[bvh.list[i]].m_material->textures[MeshBase::TextureType_Alpha].exists()) {
                                 // vertex texture coordinates

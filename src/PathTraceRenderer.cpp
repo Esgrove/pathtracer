@@ -626,7 +626,7 @@ Vec3f PathTraceRenderer::traceWhitted(float x, float y, PathTracerContext& ctx, 
         float pdf, shadow = 0.0f, d;
         Vec3f Pl, L, D;
         for (int i = 0; i < m_numLightRays; i++) {
-            (*lights)[light_index].sample_disk(pdf, Pl, samplerBase, 0, R);
+            (*lights)[light_index].sampleDisk(pdf, Pl, samplerBase, 0, R);
             L = Pl - O;
             D = L.normalized();
             if (!rt->raycast(O + 0.0001f * D, L, true)) {

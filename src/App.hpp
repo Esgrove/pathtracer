@@ -66,25 +66,24 @@ private:
     enum bvh_build_method { None, SAH };
     enum SamplingType { AO_sampling, AA_sampling };
     // this structure holds the necessary arguments when rendering using command line parameters
-    struct {
+    struct m_settings {
         bool batch_render;
-        bool enable_reflections;  // whether to compute reflections in whitted integrator
-        bool output_images;       // might be useful to compare images with the example
-        bool use_arealights;      // whether or not area light sampling is used
-        bool use_sah;
-        bool use_textures;  // whether or not textures are used
-        float ao_length;
+        bool enable_reflections;   // whether to compute reflections in whitted integrator
+        bool output_images;        // might be useful to compare images with the example
+        bool use_arealights;       // whether or not area light sampling is used
+        bool use_sah;              // surface area heuristic for bvh
+        bool use_textures;         // whether or not textures are used
+        float ao_length;           // ambient occlusion
         int spp;                   // samples per pixel to use
         SamplingType sample_type;  // AO or AA sampling; AO includes one extra sample for the primary ray
-    } m_settings;
+    };
 
-    struct {
+    struct m_results {
         std::string state_name;
         std::string scene_name;
         int rayCount;
         int build_time, trace_time;
-
-    } m_results;
+    };
 
 public:
     App(std::vector<std::string>& cmd_args);
@@ -95,23 +94,19 @@ public:
     virtual void writeState(StateDump& d) const;
 
 private:
+    void blitRttToScreen(GLContext* gl);
+    void constructTracer(void);
+    void loadMesh(const String& fileName);
+    void loadRayDump(const String& fileName);
     void process_args(std::vector<std::string>& args);
-
-    void waitKey(void);
     void renderFrame(GLContext* gl);
     void renderScene(GLContext* gl, const Mat4f& worldToCamera, const Mat4f& projection);
-    void loadMesh(const String& fileName);
     void saveMesh(const String& fileName);
-    void loadRayDump(const String& fileName);
-
-    static void downscaleTextures(MeshBase* mesh);
-    static void chopBehindPlane(MeshBase* mesh, const Vec4f& pleq);
+    void waitKey(void);
 
     static bool fileExists(const String& fileName);
-
-    void constructTracer(void);
-
-    void blitRttToScreen(GLContext* gl);
+    static void chopBehindPlane(MeshBase* mesh, const Vec4f& pleq);
+    static void downscaleTextures(MeshBase* mesh);
 
 private:
     App(const App&);             // forbidden
@@ -134,6 +129,7 @@ private:
     std::unique_ptr<PathTraceRenderer> m_pathTraceRenderer;
     std::unique_ptr<RayTracer> m_rt;
     std::unique_ptr<std::vector<AreaLight>> m_areaLights;
+    std::vector<PathVisualizationNode> m_visualization;
     std::vector<RTTriangle> m_rtTriangles;
     std::vector<Vec3f> m_rtVertexPositions;  // kept only for MD5 checksums
 
@@ -144,11 +140,10 @@ private:
     bool m_normalMapped;
     bool m_playbackVisualization = false;
     bool m_RTMode;
-    bool m_sobolBlock;
     bool m_sah;
+    bool m_sobolBlock;
     bool m_useRussianRoulette;
     bool m_whitted;
-    float m_lightSize;
     float m_aperture;
     float m_emissionBlue;
     float m_emissionGreen;
@@ -156,16 +151,15 @@ private:
     float m_filterWidth;
     float m_focalDistance;
     float m_lightintensity;
+    float m_lightSize;
     float m_saturation;
     float m_termination;
     float m_visualizationAlpha = 1;
-    int m_numBounces;
     int m_currentVisualizationIndex = 0;
+    int m_lightIndex;
     int m_numAARays;
+    int m_numBounces;
     int m_numDebugPathCount = 1;
     int m_numLightRays;
-    int m_lightIndex;
-
-    std::vector<PathVisualizationNode> m_visualization;
 };
 }  // namespace FW

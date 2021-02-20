@@ -82,7 +82,7 @@ void AreaLight::sample(float& pdf, Vec3f& p, int base, int dimension, Random& rn
     pdf = 1.0f / (4.0f * m_size.x * m_size.y);
 }
 
-void AreaLight::sample_disk(float& pdf, Vec3f& p, int base, int dimension, Random& rnd) {
+void AreaLight::sampleDisk(float& pdf, Vec3f& p, int base, int dimension, Random& rnd) {
     // orientation
     Vec3f tangent = Vec4f(m_xform.getCol(0)).getXYZ();
     Vec3f bitangent = Vec4f(m_xform.getCol(1)).getXYZ();
