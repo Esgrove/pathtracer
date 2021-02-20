@@ -34,6 +34,8 @@ This Cornell box scene with a chesterfield texture illustrates the effect of nor
 
 #### Different path trace modes
 
+Note the second pass, which keeps improving the result.
+
 ![alt text](https://github.com/Esgrove/pathtracer/blob/master/cornell_sobol_render.gif)
 ![alt text](https://github.com/Esgrove/pathtracer/blob/master/cornell_aa_render.gif)
 
