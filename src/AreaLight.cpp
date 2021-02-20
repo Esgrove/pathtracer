@@ -23,15 +23,16 @@ void AreaLight::draw(const Mat4f& worldToCamera, const Mat4f& projection, bool w
         glColor4f(m_E.x / 100.0f, m_E.y / 100.0f, m_E.z / 100.0f, 0.6f);
 
         int num_segments = 32;
+        float inv_segments = 1.0f / (float)num_segments;
 
         for (int i = 0; i < num_segments; ++i) {
-            float theta1 = FW_PI * (float)(i) / (float)num_segments;
-            float theta2 = FW_PI * (float)(i + 1) / (float)num_segments;
+            float theta1 = FW_PI * (float)(i) * inv_segments;
+            float theta2 = FW_PI * (float)(i + 1) * inv_segments;
 
             glBegin(GL_QUAD_STRIP);
 
             for (int j = 0; j <= num_segments; j++) {
-                float phi = 2.0f * FW_PI * (float)j / (float)num_segments;
+                float phi = 2.0f * FW_PI * (float)j * inv_segments;
 
                 float x1 = m_size.x * sin(theta1) * cos(phi);
                 float y1 = m_size.y * sin(theta1) * sin(phi);
